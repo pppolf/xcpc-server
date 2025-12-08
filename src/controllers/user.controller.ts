@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as userService from '../services/user.service';
 import { success, fail } from '../utils/response';
+import { generateToken } from '../utils/jwt';
 
 // 获取列表
 export const getUsers = async (req: Request, res: Response) => {
@@ -18,15 +19,23 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
-      return fail(res, '账号密码不能为空'); // 默认 code=400, http=200
+      return fail(res, '账号密码不能为空');
     }
-    const user = await userService.login(username, password);
-    // 这里简单拼接个 Token，实际生产环境建议使用 jsonwebtoken
-    const token = 'mock-jwt-token-' + user._id; 
     
+    // 1. 验证账号密码
+    const user = await userService.login(username, password);
+    
+    // 2. 生成真实 JWT Token
+    // payload 放入我们后续可能需要的信息，比如 ID、角色
+    const token = generateToken({
+      userId: user._id.toString(), // 转成字符串
+      username: user.username,
+      role: user.role
+    });
+    
+    // 3. 返回
     success(res, { user, token }, '登录成功');
   } catch (error: any) {
-    // 登录失败通常返回 401 业务码
     fail(res, error.message || '登录失败', 401);
   }
 };
