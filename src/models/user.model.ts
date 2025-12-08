@@ -25,6 +25,12 @@ export interface IUser extends Document {
   };
   problemNumber: number;
   rating: number;
+  ratingInfo: {
+    contest: number;          // 比赛分 (R_contest)
+    problem: number;          // 刷题分 (R_problem)
+    legacy: number;           // 历史衰减分 (R_legacy)
+    activeCoefficient: number; // 当前活跃系数 (K_active)，前端展示给队员看
+  };
 }
 
 // 2. 定义 Schema
@@ -52,7 +58,13 @@ const UserSchema: Schema = new Schema(
       cwnuoj: { type: String, default: '' },
     },
     problemNumber: { type: Number, default: 0 },
-    rating: { type: Number, default: 0 },
+    rating: { type: Number, default: 0, index: -1 },
+    ratingInfo: {
+      contest: { type: Number, default: 0 },
+      problem: { type: Number, default: 0 },
+      legacy: { type: Number, default: 0 },
+      activeCoefficient: { type: Number, default: 1.0 } // 默认为 1.0
+    }
   },
   { timestamps: true }
 );

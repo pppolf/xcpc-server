@@ -4,7 +4,13 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db';
+import { initGlobalConfig } from './services/config.service';
+
 import userRoutes from './routes/user.routes';
+import contestRoutes from './routes/contest.routes';
+import crawlerRoutes from './routes/crawler.routes';
+import configRoutes from './routes/config.routes';
+
 import User from './models/user.model'; // 引入 User 模型
 import bcrypt from 'bcryptjs'; // 引入 bcrypt
 
@@ -13,6 +19,7 @@ const PORT = 3000;
 
 // 1. 连接数据库
 connectDB().then(async () => {
+    await initGlobalConfig();
   // --- 🥚 自动初始化超级管理员逻辑 ---
   try {
     const count = await User.countDocuments();
@@ -42,7 +49,8 @@ connectDB().then(async () => {
         tsize: 'L',
         ojInfo: {},
         problemNumber: 0,
-        rating: 0
+        rating: 0,
+        ratingInfo: {}
       });
       
       console.log('✅ 默认管理员已创建！');
@@ -60,6 +68,9 @@ app.use(express.json()); // 解析 JSON Body
 
 // 3. 注册路由
 app.use('/users', userRoutes);
+app.use('/contests', contestRoutes);
+app.use('/crawler', crawlerRoutes);
+app.use('/config', configRoutes);
 
 // 4. 启动服务
 app.listen(PORT, () => {

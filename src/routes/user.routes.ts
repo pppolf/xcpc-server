@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as userController from '../controllers/user.controller';
-import { authMiddleware } from '../middlewares/auth.middleware';
+import { authMiddleware, roleMiddleware } from '../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -11,15 +11,15 @@ router.post('/login', userController.login);
 router.get('/', authMiddleware, userController.getUsers);
 
 // POST /users - 新增用户
-router.post('/', authMiddleware, userController.createUser);
+router.post('/', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.createUser);
 
 // POST /users/batch - 批量导入
-router.post('/batch', authMiddleware, userController.batchImportUsers);
+router.post('/batch', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.batchImportUsers);
 
 // PUT /users/:id - 更新用户
-router.put('/:id', authMiddleware, userController.updateUser);
+router.put('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.updateUser);
 
 // DELETE /users/:studentId - 删除用户
-router.delete('/:studentId', authMiddleware, userController.deleteUser);
+router.delete('/:studentId', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.deleteUser);
 
 export default router;
