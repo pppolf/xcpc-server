@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as userService from '../services/user.service';
 import { success, fail } from '../utils/response';
 import { generateToken } from '../utils/jwt';
+import User from '../models/user.model';
 
 // 获取列表
 export const getUsers = async (req: Request, res: Response) => {
@@ -100,5 +101,24 @@ export const deleteUser = async (req: Request, res: Response) => {
     success(res, null, '删除成功');
   } catch (error) {
     fail(res, '删除失败', 500, 500);
+  }
+};
+
+export const getUserProfile = async (req: Request, res: Response) => {
+  try {
+    // req.user 是 authMiddleware 解析 Token 后挂载的
+    // 但 Token 里的信息可能过时，建议拿着 ID 去数据库查最新的
+    // @ts-ignore
+    const userId = req.user.userId;
+
+    const user = await User.findById(userId).select('-password'); // 不返回密码
+    
+    if (!user) {
+      return fail(res, '用户不存在', 404);
+    }
+
+    success(res, user);
+  } catch (error: any) {
+    fail(res, error.message || '获取用户信息失败', 500);
   }
 };

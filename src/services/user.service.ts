@@ -1,5 +1,6 @@
 import User, { IUser } from '../models/user.model';
 import bcrypt from 'bcryptjs';
+import MonthlySnapshot from '../models/monthly-snapshot.model';
 
 // 查询参数接口
 interface UserQuery {
@@ -125,11 +126,40 @@ export const findAllUsers = async (query: UserQuery) => {
 
   // 4. 格式化返回结果
   // aggregate 返回的是数组 [{ data: [], metadata: [{ total: 10 }] }]
-  const data = result[0].data;
+  const userList = result[0].data;
   const total = result[0].metadata[0] ? result[0].metadata[0].total : 0;
 
+  if (userList.length > 0) {
+    // A. 确定要查哪个月的快照 (本月1号的快照 = 截止上月底的数据)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+
+    // B. 提取本页所有用户的 ID
+    const userIds = userList.map((u: any) => u._id);
+
+    // C. 去 MonthlySnapshot 表批量查找
+    const snapshots = await MonthlySnapshot.find({
+      userId: { $in: userIds },
+      year: currentYear,
+      month: currentMonth
+    });
+
+    // D. 建立哈希映射 (UserId -> TotalSolved) 方便快速查找
+    const snapshotMap = new Map<string, number>();
+    snapshots.forEach(s => snapshotMap.set(s.userId.toString(), s.totalSolved));
+
+    // E. 将数据合并回 userList
+    // 注意：aggregate 返回的对象不是 Mongoose Document，而是普通 JS 对象，可以直接赋值
+    userList.forEach((user: any) => {
+      // 如果 map 里有值，就取快照值；如果没有(新人或还没生成)，默认为 0
+      user.lastMonthSolved = snapshotMap.get(user._id.toString()) || 0;
+    });
+  }
+  // =======================================================
+
   return {
-    list: data,
+    list: userList,
     total,
     page,
     pageSize

@@ -33,7 +33,7 @@ export const refreshAll = async (req: Request, res: Response) => {
 export const getRefreshTargets = async (req: Request, res: Response) => {
   try {
     const users = await User.find(
-      { role: { $ne: 'Teacher' }, status: 'Active' }, 
+      { role: { $ne: 'Teacher' } }, 
       { _id: 1, realName: 1, studentId: 1 } // 只查这几个字段，速度快
     );
     success(res, users);

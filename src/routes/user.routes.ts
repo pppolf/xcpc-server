@@ -22,4 +22,7 @@ router.put('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Studen
 // DELETE /users/:studentId - 删除用户
 router.delete('/:studentId', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.deleteUser);
 
+// 获取个人信息 (必须加 authMiddleware)
+router.get('/profile', authMiddleware, userController.getUserProfile);
+
 export default router;

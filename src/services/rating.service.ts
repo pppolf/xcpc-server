@@ -5,6 +5,9 @@ import SeasonRating from '../models/season-rating.model';
 import User from '../models/user.model';
 import { RATING_CONFIG } from '../config/rating.config';
 import { getSeasonDiff } from '../utils/season.helper';
+import MonthlySnapshot from '../models/monthly-snapshot.model';
+import { getCurrentSeason } from './config.service';
+import { fetchOjData } from './crawler.service';
 
 /**
  * 获取上个月的刷题统计数据
@@ -23,6 +26,99 @@ const getLastMonthStats = async (userId: string, currentYear: number, currentMon
     year: lastYear,
     month: lastMonth
   });
+};
+
+/**
+ * 🚀 核心逻辑：每月1号的自动结算任务
+ * 执行时间：例如 凌晨
+ * 目标：结算 本月 的刷题分
+ */
+export const batchSettleLastMonth = async () => {
+  const now = new Date();
+  const currentSeason = getCurrentSeason();
+  
+  // 1. 确定时间窗口
+  // "本月" (用于存新的快照)
+  const thisYear = now.getFullYear();
+  const thisMonth = now.getMonth() + 1; 
+
+  // "上月" (用于结算)
+  let lastYear = thisYear;
+  let lastMonth = thisMonth - 1;
+  if (lastMonth === 0) {
+    lastMonth = 12;
+    lastYear -= 1;
+  }
+
+  console.log(`[Job] 开始结算: ${lastYear}-${lastMonth} -> ${thisYear}-${thisMonth}`);
+
+  const users = await User.find({ role: { $ne: 'Teacher' } });
+  let count = 0;
+
+  for (const user of users) {
+    try {
+      // 2. 现场爬取该用户“此时此刻”的总题数 (作为 10月1日 快照)
+      // 注意：这里需要确保 crawler.service 导出了 fetchOjData 函数
+      const crawlerRes = await fetchOjData(user.ojInfo); 
+      const currentTotal = crawlerRes.total;
+
+      // 3. 寻找 “上个月初” 的快照
+      const lastSnapshot = await MonthlySnapshot.findOne({
+        userId: user._id,
+        year: lastYear,
+        month: lastMonth
+      });
+
+      // 4. 计算增量 (差分)
+      // 如果有上月快照，增量 = 现在(160) - 上月快照(100) = 60
+      // 如果没有上月快照(新入队)，增量 = 现在(160) - 0 = 160
+      const startTotal = lastSnapshot ? lastSnapshot.totalSolved : 0;
+      const increment = Math.max(0, currentTotal - startTotal);
+
+      console.log(`用户 ${user.realName}: 月初(${startTotal}) -> 月末(${currentTotal}) = 新增 ${increment}`);
+
+      // 5. 存入/更新 的统计表 (PracticeMonthStats)
+      // 这才是真正用来算 Rating 的数据
+      await PracticeMonthStats.findOneAndUpdate(
+        { userId: user._id, year: lastYear, month: lastMonth },
+        {
+          $set: {
+            problemCount: increment, // 覆盖掉之前可能不准的累加值
+            season: currentSeason,
+            isSettled: true // 标记已结算
+          }
+        },
+        { upsert: true, new: true }
+      );
+
+      // 6. 触发 Rating 计算 (算分、算系数)
+      // 这里调用之前的逻辑，它会读取我们刚刚更新的 problemCount
+      await settleMonthlyPractice(user._id.toString(), lastYear, lastMonth, increment);
+      await updateUserTotalRating(user._id.toString());
+
+      // 7. 保存“本月初” 的快照，给下个月用
+      await MonthlySnapshot.findOneAndUpdate(
+        { userId: user._id, year: thisYear, month: thisMonth },
+        { 
+          season: currentSeason,
+          totalSolved: currentTotal 
+        },
+        { upsert: true }
+      );
+      
+      // 8. 顺手更新 User 表的总缓存
+      user.problemNumber = currentTotal;
+      await user.save();
+
+      count++;
+      // 稍微慢一点，防止被 OJ 封
+      await new Promise(r => setTimeout(r, 2000));
+    } catch (error) {
+      console.error(`结算用户 ${user.realName} 失败:`, error);
+    }
+  }
+  
+  return count;
 };
 
 // --- 2. 业务逻辑 ---
@@ -117,7 +213,7 @@ export const calculateContestRating = async (userId: string) => {
   return parseFloat(total.toFixed(2));
 };
 
-// [核心修复] 结算某个月的刷题分 (并保存到数据库)
+// 结算某个月的刷题分 (并保存到数据库)
 export const settleMonthlyPractice = async (userId: string, year: number, month: number, problemCount: number) => {
   const { MONTH_THRESHOLD, SCORE_PER_PROBLEM, K_INCREMENT, K_DECREMENT, K_MAX, K_MIN } = RATING_CONFIG.PRACTICE;
   
@@ -219,4 +315,28 @@ export const updateUserTotalRating = async (userId: string) => {
   });
 
   return finalRating;
+};
+
+/**
+ * 获取指定年月的全员快照
+ * @param year 年份 (如 2023)
+ * @param month 月份 (1-12)
+ */
+export const getMonthSnapshot = async (year: number, month: number) => {
+  // 1. 直接查询该年月的快照表
+  const snapshots = await MonthlySnapshot.find({
+    year: year,
+    month: month
+  })
+  // 2. 关联查询 User 表，把 userId 变成具体的 { realName, studentId ... }
+  .populate({
+    path: 'userId',
+    select: 'realName studentId college role', // 只取需要的字段
+    // 3. 可选：过滤掉老师 (虽然快照表理论上不存老师，但加一层保险)
+    match: { role: { $ne: 'Teacher' } }
+  })
+  .lean(); // 转为普通 JS 对象，速度更快
+
+  // 4. (可选) 过滤掉关联不到用户的脏数据（比如用户被删了，但快照还在）
+  return snapshots.filter(s => s.userId !== null);
 };

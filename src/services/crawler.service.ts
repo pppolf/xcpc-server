@@ -4,6 +4,7 @@ import * as cheerio from 'cheerio';
 import User from '../models/user.model';
 import CrawlerLog from '../models/crawler-log.model';
 import PracticeMonthStats from '../models/practice-stats.model';
+import { getCurrentSeason } from './config.service';
 
 const COMMON_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -136,7 +137,7 @@ const fetchLuogu = async (input: string): Promise<CrawlerResult> => {
 };
 
 // 聚合函数 (收集错误)
-const fetchOjData = async (ojInfo: any) => {
+export const fetchOjData = async (ojInfo: any) => {
   console.log(`[Crawler] 开始爬取...`);
   const [cf, at, nc, lg] = await Promise.all([
     fetchCodeforces(ojInfo.cf),
@@ -197,10 +198,9 @@ export const refreshUserSolvedStats = async (userId: string, triggerType: 'MANUA
     await PracticeMonthStats.findOneAndUpdate(
       { userId, year: now.getFullYear(), month: now.getMonth() + 1 },
       { 
-        $inc: { problemCount: increment }, 
-        $setOnInsert: { season: '2023-2024', activeCoefficient: 1.0, monthScore: 0, isSettled: false }
+        $set: { problemCount: increment }, 
       },
-      { upsert: true, new: true }
+      { upsert: true }
     );
   }
 
@@ -219,7 +219,7 @@ const randomDelay = (min: number, max: number) => {
 
 // 批量刷新逻辑保持不变，它会调用 refreshUserSolvedStats 并接收 errors
 export const refreshAllMembers = async () => {
-  const users = await User.find({ role: { $ne: 'Teacher' }, status: 'Active' });
+  const users = await User.find({ role: { $ne: 'Teacher' } });
   const results = [];
   let successCount = 0;
   let failCount = 0;
