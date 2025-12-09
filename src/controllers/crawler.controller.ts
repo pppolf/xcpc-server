@@ -3,6 +3,7 @@ import { success, fail } from '../utils/response';
 import { Request, Response } from 'express';
 import User from '../models/user.model';
 
+// 刷新个人做题情况
 export const refreshUser = async (req: Request, res: Response) => {
   try {
     const { userId } = req.body;
@@ -19,6 +20,7 @@ export const refreshUser = async (req: Request, res: Response) => {
   }
 };
 
+// 批量刷新做题情况
 export const refreshAll = async (req: Request, res: Response) => {
   try {
     // 这个操作耗时较长，建议前端设置较长的 timeout
@@ -30,6 +32,7 @@ export const refreshAll = async (req: Request, res: Response) => {
   }
 };
 
+// 获取需要刷新的用户
 export const getRefreshTargets = async (req: Request, res: Response) => {
   try {
     const users = await User.find(

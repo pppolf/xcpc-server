@@ -12,9 +12,12 @@ import contestRoutes from './routes/contest.routes';
 import crawlerRoutes from './routes/crawler.routes';
 import configRoutes from './routes/config.routes';
 import ratingRoutes from './routes/rating.routes';
+import ticketRoutes from './routes/ticket.routes';
+import commonRoutes from './routes/common.routes';
 
 import User from './models/user.model'; // 引入 User 模型
 import bcrypt from 'bcryptjs'; // 引入 bcrypt
+import path from 'path';
 
 const app = express();
 const PORT = 3000;
@@ -68,6 +71,7 @@ connectDB().then(async () => {
 });
 
 // 2. 中间件配置
+app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 app.use(cors()); // 允许跨域
 app.use(express.json()); // 解析 JSON Body
 
@@ -77,6 +81,8 @@ app.use('/contests', contestRoutes);
 app.use('/crawler', crawlerRoutes);
 app.use('/config', configRoutes);
 app.use('/rating', ratingRoutes);
+app.use('/tickets', ticketRoutes);
+app.use('/common', commonRoutes);
 
 // 4. 启动服务
 app.listen(PORT, () => {

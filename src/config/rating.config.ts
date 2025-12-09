@@ -35,6 +35,9 @@ export const RATING_CONFIG = {
       'GPLT_NAT_1': 0.5,
       'GPLT_NAT_2': 0.3,
       'GPLT_NAT_3': 0.1,
+      'GPLT_PROV_1': 0,
+      'GPLT_PROV_2': 0,
+      'GPLT_PROV_3': 0,
 
       // 2. 蓝桥杯 (LANQIAO)
       'LANQIAO_NAT_1': 0.5,
@@ -60,7 +63,10 @@ export const RATING_CONFIG = {
       // 5. 计算机能力挑战赛 (NCCCU)
       'NCCCU_NAT_1': 0.1,
       'NCCCU_NAT_2': 0.05,
-      'NCCCU_NAT_3': 0.01
+      'NCCCU_NAT_3': 0.01,
+      'NCCCU_PROV_1': 0,
+      'NCCCU_PROV_2': 0,
+      'NCCCU_PROV_3': 0
     },
     // 奖项衰减系数 [本赛季, 上赛季, 上上赛季, ...]
     AWARD_DECAY: [1.0, 0.8, 0.4, 0.2, 0] 

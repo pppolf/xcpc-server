@@ -279,19 +279,32 @@ export const calculatePracticeRating = async (userId: string) => {
   return Math.min(RATING_CONFIG.PRACTICE.SEASON_MAX, parseFloat(total.toFixed(2)));
 };
 
-// 计算历史衰减分
-export const calculateLegacyRating = async (userId: string) => {
+/**
+ * 计算历史继承分
+ * @param userId 用户ID
+ * @param baseSeason (可选) 基准赛季。如果不传，则使用系统当前赛季。
+ * 在赛季切换时，必须传入“新赛季”，这样“旧赛季”才会被算作历史。
+ */
+export const calculateLegacyRating = async (userId: string, baseSeason?: string) => {
   const { FACTOR } = RATING_CONFIG.LEGACY;
-  const currentSeason = RATING_CONFIG.CURRENT_SEASON;
   
+  // 1. 确定基准赛季
+  // 如果是在 setSeason 流程里，baseSeason 就是 "2025-2026"
+  // 如果是日常更新，baseSeason 为空，取系统当前的 "2024-2025"
+  const currentSeason = baseSeason || getCurrentSeason(); 
+  
+  // 2. 查找历史记录
+  // 逻辑：只要不是基准赛季的，都算历史。
+  // 切换时：基准是新赛季，所以旧赛季(刚归档) != 新赛季，会被查出来 -> 正确！
   const history = await SeasonRating.find({ 
     userId, 
-    season: { $ne: currentSeason } // 排除当前赛季
+    season: { $ne: currentSeason } 
   });
   
   let totalLegacy = 0;
   
   for (const rec of history) {
+    // 计算时间差：新赛季 vs 历史赛季
     const k = getSeasonDiff(currentSeason, rec.season);
     // Rating * 0.6^k
     totalLegacy += rec.finalRating * Math.pow(FACTOR, k);
@@ -346,4 +359,70 @@ export const getMonthSnapshot = async (year: number, month: number) => {
 
   // 4. (可选) 过滤掉关联不到用户的脏数据（比如用户被删了，但快照还在）
   return snapshots.filter(s => s.userId !== null);
+};
+
+/**
+ * 🚨 赛季归档核心逻辑
+ * @param oldSeason 即将结束的旧赛季
+ * @param newSeason 即将开启的新赛季 (用于计算继承分)
+ */
+export const archiveAndResetSeason = async (oldSeason: string, newSeason: string) => {
+  console.log(`[Season] 开始归档: ${oldSeason} -> ${newSeason}`);
+
+  const users = await User.find({ role: { $ne: 'Teacher' } }).sort({ rating: -1 });
+  let count = 0;
+
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i];
+    const rank = i + 1;
+
+    try {
+      // 1. 【归档】将当前 User 表里的数据存入 SeasonRating
+      // 这里的 ratingInfo.contest 等字段存的是旧赛季的最终成绩
+      await SeasonRating.findOneAndUpdate(
+        { userId: user._id, season: oldSeason },
+        {
+          $set: {
+            finalRating: user.rating,
+            contestScore: user.ratingInfo?.contest || 0,
+            practiceScore: user.ratingInfo?.problem || 0,
+            rank: rank
+          }
+        },
+        { upsert: true, new: true }
+      );
+
+      // 2. 【预计算】在新赛季开始那一刻，该用户的 Rating 应该是多少？
+      // 新赛季初始分 = 0(比赛) + 0(刷题) + 历史继承分(基于新赛季计算)
+      // 🔴 关键：传入 newSeason，这样 calculateLegacyRating 会把 oldSeason 当作历史
+      const newLegacyScore = await calculateLegacyRating(user._id.toString(), newSeason);
+      
+      // 3. 【重置】强制更新 User 表 (原子操作)
+      // 我们显式指定所有字段，不给 Mongoose 忽略的机会
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            // 总分 = 继承分
+            rating: newLegacyScore,
+            
+            // 必须显式更新嵌套字段
+            "ratingInfo.contest": 0,
+            "ratingInfo.problem": 0,
+            "ratingInfo.legacy": newLegacyScore,
+            "ratingInfo.activeCoefficient": 1.0 // 重置活跃系数
+          }
+        }
+      );
+      
+      // 注意：这里不要调用 updateUserTotalRating(user._id)，因为此时全局配置还没变，
+      // 调用它可能会导致它又用旧赛季配置算了一遍，覆盖掉我们的重置操作。
+
+      count++;
+    } catch (error) {
+      console.error(`[Season] 用户 ${user.realName} 归档失败:`, error);
+    }
+  }
+
+  console.log(`[Season] 归档完成，已重置 ${count} 名用户数据`);
 };

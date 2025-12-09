@@ -104,6 +104,7 @@ export const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
+// 获取个人信息
 export const getUserProfile = async (req: Request, res: Response) => {
   // 1. 找到所有 ratingInfo 是 null 的用户，把整个对象初始化
   await User.updateMany(

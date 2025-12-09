@@ -4,6 +4,7 @@ import { success, fail } from '../utils/response';
 import MonthlySnapshot from '../models/monthly-snapshot.model'
 import User from '../models/user.model';
 import * as ratingService from '../services/rating.service';
+import { archiveAndResetSeason } from '../services/rating.service';
 
 // 获取当前赛季
 export const getSeason = (req: Request, res: Response) => {
@@ -13,19 +14,31 @@ export const getSeason = (req: Request, res: Response) => {
 // 修改赛季 (危险操作)
 export const setSeason = async (req: Request, res: Response) => {
   try {
-    const { season } = req.body;
-    if (!season || !/^\d{4}-\d{4}$/.test(season)) {
-      return fail(res, '赛季格式不正确，应为 YYYY-YYYY');
+    const { season: newSeason } = req.body;
+    
+    if (!newSeason || !/^\d{4}-\d{4}$/.test(newSeason)) {
+      return fail(res, '赛季格式不正确');
     }
 
-    const newSeason = await updateCurrentSeason(season);
+    const oldSeason = getCurrentSeason();
+
+    if (oldSeason === newSeason) {
+      return success(res, { season: oldSeason }, '无需切换');
+    }
+
+    console.warn(`[System] 正在将赛季从 ${oldSeason} 切换至 ${newSeason}...`);
+
+    // 传入 newSeason
+    await archiveAndResetSeason(oldSeason, newSeason);
+
+    // 更新全局配置
+    await updateCurrentSeason(newSeason);
     
-    // TODO: 这里通常需要触发"赛季归档"逻辑，把旧赛季的分数存入 SeasonRating 表
-    // 这属于高级功能，先留坑
-    
-    success(res, { season: newSeason }, '赛季切换成功');
+    success(res, { season: newSeason }, `成功切换赛季！`);
+
   } catch (error: any) {
-    fail(res, error.message || '设置失败', 500);
+    console.error(error);
+    fail(res, error.message || '赛季切换失败', 500);
   }
 };
 
