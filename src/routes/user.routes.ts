@@ -25,4 +25,13 @@ router.delete('/:studentId', authMiddleware, roleMiddleware(['Teacher', 'Captain
 // 获取个人信息 (必须加 authMiddleware)
 router.get('/profile', authMiddleware, userController.getUserProfile);
 
+// 根据id获取用户展示信息
+router.get('/:id', authMiddleware, userController.getUserById);
+
+// [新增] 用户修改自己的密码
+router.post('/update-password', authMiddleware, userController.updatePassword);
+
+// [新增] 管理员重置他人密码 (需要 Teacher 或 Captain 权限)
+router.post('/reset-password', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.resetUserPassword);
+
 export default router;

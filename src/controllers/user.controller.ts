@@ -3,6 +3,7 @@ import * as userService from '../services/user.service';
 import { success, fail } from '../utils/response';
 import { generateToken } from '../utils/jwt';
 import User from '../models/user.model';
+import bcrypt from 'bcryptjs';
 
 // 获取列表
 export const getUsers = async (req: Request, res: Response) => {
@@ -135,5 +136,75 @@ export const getUserProfile = async (req: Request, res: Response) => {
     success(res, user);
   } catch (error: any) {
     fail(res, error.message || '获取用户信息失败', 500);
+  }
+};
+
+// 根据id获取用户展示信息
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    // 排除密码字段
+    const user = await User.findById(id).select('-password');
+    if (!user) return fail(res, '用户不存在');
+    success(res, user);
+  } catch (e: any) {
+    fail(res, e.message);
+  }
+};
+
+// 修改密码
+export const updatePassword = async (req: Request, res: Response) => {
+  try {
+    // @ts-ignore
+    const userId = req.user.userId; // 从 Token 解析出来的当前用户 ID
+    const { oldPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return fail(res, '新密码长度不能少于 6 位');
+    }
+
+    const user = await User.findById(userId).select('+password');
+    if (!user) return fail(res, '用户不存在');
+
+    // 1. 验证旧密码
+    // 注意：如果是通过脚本批量导入的用户，可能没有加密，这里要做兼容处理
+    // 但为了安全，通常假设数据库里存的都是 hash。
+    // 如果你之前的导入逻辑是明文存的，这里要小心。假设都是加密的：
+    const isMatch = await bcrypt.compare(oldPassword, user.password as string);
+    if (!isMatch) {
+      return fail(res, '旧密码错误');
+    }
+
+    // 2. 加密新密码
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    success(res, null, '密码修改成功');
+  } catch (error: any) {
+    fail(res, error.message || '修改失败', 500);
+  }
+};
+
+// 重置密码
+export const resetUserPassword = async (req: Request, res: Response) => {
+  try {
+    const { userId, newPassword } = req.body;
+
+    if (!userId || !newPassword) {
+      return fail(res, '参数缺失');
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return fail(res, '目标用户不存在');
+
+    // 直接覆盖密码，不需要验证旧密码
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    success(res, null, `已将用户 ${user.realName} 的密码重置`);
+  } catch (error: any) {
+    fail(res, error.message || '重置失败', 500);
   }
 };
