@@ -4,6 +4,8 @@ import { success, fail } from '../utils/response';
 import { generateToken } from '../utils/jwt';
 import User from '../models/user.model';
 import bcrypt from 'bcryptjs';
+import path from 'path';
+import fs from 'fs';
 
 // 获取列表
 export const getUsers = async (req: Request, res: Response) => {
@@ -206,5 +208,70 @@ export const resetUserPassword = async (req: Request, res: Response) => {
     success(res, null, `已将用户 ${user.realName} 的密码重置`);
   } catch (error: any) {
     fail(res, error.message || '重置失败', 500);
+  }
+};
+
+// 上传头像
+export const uploadAvatar = async (req: Request & { file?: Express.Multer.File }, res: Response) => {
+  try {
+    // 1. 基础校验
+    if (!req.file) {
+      return fail(res, '请选择要上传的文件');
+    }
+
+    const userId = req.user?.userId;
+    if (!userId) {
+      // 如果未授权，顺手把刚上传的文件删掉，防止垃圾文件堆积
+      fs.unlinkSync(req.file.path); 
+      return fail(res, '未授权');
+    }
+
+    // 2. 构造新的头像 URL (存入数据库的路径)
+    // 这里的 'avatars' 必须和你 middleware 里配置的文件夹名一致
+    // 强制使用正斜杠 /，确保在 Windows 和 Linux 上都能被浏览器正确识别为 URL
+    const filename = req.file.filename;
+    const newAvatarUrl = `/uploads/avatars/${filename}`;
+
+    // 3. 查找用户并删除旧头像
+    const currentUser = await User.findById(userId);
+    
+    if (!currentUser) {
+      fs.unlinkSync(req.file.path); // 回滚：删除刚上传的新图
+      return fail(res, '用户不存在');
+    }
+
+    // 如果用户之前有头像，且不是默认头像，且文件确实存在于硬盘上，则删除它
+    if (currentUser.avatar && !currentUser.avatar.includes('default')) {
+      // 计算旧文件的绝对路径
+      // 假设 public 是你的静态资源根目录
+      const oldAvatarPath = path.join(process.cwd(), 'public', currentUser.avatar);
+      
+      // 异步删除旧文件，不阻塞主流程，出错了也不影响本次上传
+      fs.access(oldAvatarPath, fs.constants.F_OK, (err) => {
+        if (!err) {
+          fs.unlink(oldAvatarPath, (unlinkErr) => {
+            if (unlinkErr) console.error('删除旧头像失败:', unlinkErr);
+          });
+        }
+      });
+    }
+
+    // 4. 更新数据库
+    currentUser.avatar = newAvatarUrl;
+    await currentUser.save(); 
+    // 或者使用 findByIdAndUpdate，但用 save() 可以触发 mongoose 的 pre-save 钩子(如果有的话)
+
+    // 5. 返回结果 (手动排除密码，或者依赖 User 模型里的 toJSON 配置)
+    const userObj = currentUser.toObject();
+    delete (userObj as any).password;
+
+    return success(res, userObj);
+
+  } catch (error: any) {
+    if (req.file && req.file.path) {
+      fs.unlink(req.file.path, () => {});
+    }
+    console.error('上传头像异常:', error);
+    return fail(res, error.message || '头像上传失败');
   }
 };

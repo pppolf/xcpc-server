@@ -14,6 +14,7 @@ export interface IUser extends Document {
   idCard: string;
   email: string;
   tsize: string;
+  avatar: string;
   role: string;
   status: string;
   ojInfo: {
@@ -48,6 +49,7 @@ const UserSchema: Schema = new Schema(
     idCard: { type: String, required: true },
     email: { type: String, required: true },
     tsize: { type: String, required: true },
+    avatar: { type: String, default: '',},
     role: { type: String, default: 'Member' },
     status: { type: String, default: 'Active' },
     ojInfo: {

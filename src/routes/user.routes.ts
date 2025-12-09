@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as userController from '../controllers/user.controller';
 import { authMiddleware, roleMiddleware } from '../middlewares/auth.middleware';
+import { uploadAvatar } from '../middlewares/upload.middleware';
 
 const router = Router();
 
@@ -33,5 +34,8 @@ router.post('/update-password', authMiddleware, userController.updatePassword);
 
 // [新增] 管理员重置他人密码 (需要 Teacher 或 Captain 权限)
 router.post('/reset-password', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.resetUserPassword);
+
+// 用户上传头像
+router.post('/avatar', authMiddleware, uploadAvatar.single('avatar'), userController.uploadAvatar);
 
 export default router;

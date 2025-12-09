@@ -148,14 +148,15 @@ export const calculateRawScore = (
     // 如果超过4个赛季，衰减系数取数组最后一个或0
     const decay = diff < 4 ? AWARD_DECAY[decayIndex] : 0;
     
-    return base * weight * decay;
+    return parseFloat((base * weight * decay).toFixed(2));
   }
 
-  // === B. 常规比赛/训练营 (XCPC, CAMP) ===
-  // 规则：只认定本赛季
-  if (season !== currentSeason) {
-    return 0; 
-  }
+  // 计算衰减
+  const diff = getSeasonDiff(currentSeason, season);
+  // 越界保护
+  const decayIndex = Math.min(diff, AWARD_DECAY.length - 1);
+  // 如果超过4个赛季，衰减系数取数组最后一个或0
+  const decay = diff < 4 ? AWARD_DECAY[decayIndex] : 0;
 
   // 获取基准分
   let base = BASE_SCORE.XCPC;
@@ -173,7 +174,7 @@ export const calculateRawScore = (
     return 0;
   }
 
-  const score = base * ((N - rk + 1) / N) * weight;
+  const score = base * ((N - rk + 1) / N) * weight * decay;
   
   // 再次确保不返回负数
   return Math.max(0, parseFloat(score.toFixed(2)));
