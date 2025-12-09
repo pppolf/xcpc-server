@@ -105,6 +105,20 @@ export const deleteUser = async (req: Request, res: Response) => {
 };
 
 export const getUserProfile = async (req: Request, res: Response) => {
+  // 1. 找到所有 ratingInfo 是 null 的用户，把整个对象初始化
+  await User.updateMany(
+    { ratingInfo: null }, 
+    { 
+      $set: { 
+        ratingInfo: { 
+          contest: 0, 
+          problem: 0, 
+          legacy: 0, 
+          activeCoefficient: 1.0 
+        } 
+      } 
+    }
+  );
   try {
     // req.user 是 authMiddleware 解析 Token 后挂载的
     // 但 Token 里的信息可能过时，建议拿着 ID 去数据库查最新的

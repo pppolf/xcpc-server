@@ -58,7 +58,6 @@ export const batchSettleLastMonth = async () => {
   for (const user of users) {
     try {
       // 2. 现场爬取该用户“此时此刻”的总题数 (作为 10月1日 快照)
-      // 注意：这里需要确保 crawler.service 导出了 fetchOjData 函数
       const crawlerRes = await fetchOjData(user.ojInfo); 
       const currentTotal = crawlerRes.total;
 
@@ -254,6 +253,16 @@ export const settleMonthlyPractice = async (userId: string, year: number, month:
     },
     { upsert: true, new: true }
   );
+
+  await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        'ratingInfo.activeCoefficient': k
+      }
+    },
+    { new: true }
+  )
   
   return { k, monthScore };
 };
@@ -307,11 +316,9 @@ export const updateUserTotalRating = async (userId: string) => {
   // 假设你在 User Schema 中定义的是 ratingInfo
   await User.findByIdAndUpdate(userId, {
     rating: finalRating, 
-    ratingInfo: { // 统一使用 ratingInfo
-      contest: rContest,
-      problem: rProblem,
-      legacy: rLegacy
-    }
+    "ratingInfo.contest": rContest,
+    "ratingInfo.problem": rProblem,
+    "ratingInfo.legacy": rLegacy
   });
 
   return finalRating;

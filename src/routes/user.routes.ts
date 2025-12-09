@@ -11,16 +11,16 @@ router.post('/login', userController.login);
 router.get('/', authMiddleware, userController.getUsers);
 
 // POST /users - 新增用户
-router.post('/', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.createUser);
+router.post('/', authMiddleware, roleMiddleware(['Teacher', 'Captain','Vice-Captain', 'Student-Coach']), userController.createUser);
 
 // POST /users/batch - 批量导入
-router.post('/batch', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.batchImportUsers);
+router.post('/batch', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.batchImportUsers);
 
 // PUT /users/:id - 更新用户
-router.put('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.updateUser);
+router.put('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.updateUser);
 
 // DELETE /users/:studentId - 删除用户
-router.delete('/:studentId', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), userController.deleteUser);
+router.delete('/:studentId', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.deleteUser);
 
 // 获取个人信息 (必须加 authMiddleware)
 router.get('/profile', authMiddleware, userController.getUserProfile);

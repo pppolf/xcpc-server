@@ -9,9 +9,9 @@ const router = Router();
 router.get('/user/:userId', authMiddleware, contestController.getUserContestRecords);
 
 // 录入比赛 (建议只有管理员可操作)
-router.post('/', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), contestController.addContestRecord);
+router.post('/', authMiddleware, roleMiddleware(['Teacher', 'Captain','Vice-Captain',  'Student-Coach']), contestController.addContestRecord);
 
 // 删除记录 (管理员)
-router.delete('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Student-Coach']), contestController.deleteContestRecord);
+router.delete('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), contestController.deleteContestRecord);
 
 export default router;
