@@ -142,7 +142,7 @@ const fetchCWNUOJ = async (input: string): Promise<CrawlerResult> => {
   try {
     const url = `https://oj.cwnu.online-judge.cn/api/stats/${input}`;
     const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 15000 });
-    return { count: res.data };
+    return { count: res.data.data };
   } catch (error: any) {
     console.error(`CWNUOJ Error [${input}]:`, error.message);
     return { count: 0, error: `CWNUOJ: ${error.message}` };
