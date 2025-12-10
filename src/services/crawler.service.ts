@@ -136,20 +136,34 @@ const fetchLuogu = async (input: string): Promise<CrawlerResult> => {
   }
 };
 
+// 爬取校内OJ
+const fetchCWNUOJ = async (input: string): Promise<CrawlerResult> => {
+  if (!input) return { count: 0 };
+  try {
+    const url = `https://oj.cwnu.online-judge.cn/api/stats/${input}`;
+    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 15000 });
+    return { count: res.data };
+  } catch (error: any) {
+    console.error(`CWNUOJ Error [${input}]:`, error.message);
+    return { count: 0, error: `CWNUOJ: ${error.message}` };
+  }
+}
+
 // 聚合函数 (收集错误)
 export const fetchOjData = async (ojInfo: any) => {
   console.log(`[Crawler] 开始爬取...`);
-  const [cf, at, nc, lg] = await Promise.all([
+  const [cf, at, nc, lg, cwnuoj] = await Promise.all([
     fetchCodeforces(ojInfo.cf),
     fetchAtCoder(ojInfo.at),
     fetchNowCoder(ojInfo.nc),
-    fetchLuogu(ojInfo.lg)
+    fetchLuogu(ojInfo.lg),
+    fetchCWNUOJ(ojInfo.cwnuoj)
   ]);
 
-  console.log(`[Crawler] 结果: CF:${cf.count}, AT:${at.count}, NC:${nc.count}, LG:${lg.count}`);
+  console.log(`[Crawler] 结果: CF:${cf.count}, AT:${at.count}, NC:${nc.count}, LG:${lg.count}, CWNUOJ:${cwnuoj.count}`);
   
   // 收集所有的非空错误信息
-  const errors = [cf.error, at.error, nc.error, lg.error].filter(Boolean) as string[];
+  const errors = [cf.error, at.error, nc.error, lg.error, cwnuoj.error].filter(Boolean) as string[];
 
   return { 
     counts: {
@@ -157,9 +171,9 @@ export const fetchOjData = async (ojInfo: any) => {
       at: at.count,
       nc: nc.count,
       lg: lg.count,
-      cwnuoj: 0, 
+      cwnuoj: cwnuoj.count, 
     },
-    total: cf.count + at.count + nc.count + lg.count,
+    total: cf.count + at.count + nc.count + lg.count + cwnuoj.count,
     errors // 返回错误列表
   };
 };
