@@ -131,7 +131,7 @@ export const calculateRawScore = (
   rk: number = 0      // 排名
 ): number => {
   const { BASE_SCORE, WEIGHTS, AWARD_DECAY, AWARD_WEIGHTS } = RATING_CONFIG.CONTEST;
-  const currentSeason = RATING_CONFIG.CURRENT_SEASON;
+  const currentSeason = getCurrentSeason();
   
   // === A. 奖项认定系列 ===
   // 组合 key，例如 "LANQIAO_NAT_1"
@@ -174,6 +174,7 @@ export const calculateRawScore = (
     return 0;
   }
 
+  
   const score = base * ((N - rk + 1) / N) * weight * decay;
   
   // 再次确保不返回负数
@@ -245,7 +246,7 @@ export const settleMonthlyPractice = async (userId: string, year: number, month:
     { userId, year, month },
     {
       $set: {
-        season: RATING_CONFIG.CURRENT_SEASON,
+        season: getCurrentSeason(),
         problemCount,
         activeCoefficient: k,
         monthScore: parseFloat(monthScore.toFixed(2)),
@@ -272,7 +273,7 @@ export const settleMonthlyPractice = async (userId: string, year: number, month:
 export const calculatePracticeRating = async (userId: string) => {
   const stats = await PracticeMonthStats.find({ 
     userId, 
-    season: RATING_CONFIG.CURRENT_SEASON 
+    season: getCurrentSeason()
   });
   
   const total = stats.reduce((sum, s) => sum + s.monthScore, 0);
@@ -292,7 +293,7 @@ export const calculateLegacyRating = async (userId: string, baseSeason?: string)
   // 1. 确定基准赛季
   // 如果是在 setSeason 流程里，baseSeason 就是 "2025-2026"
   // 如果是日常更新，baseSeason 为空，取系统当前的 "2024-2025"
-  const currentSeason = baseSeason || getCurrentSeason(); 
+  const currentSeason: string = baseSeason || getCurrentSeason(); 
   
   // 2. 查找历史记录
   // 逻辑：只要不是基准赛季的，都算历史。

@@ -4,6 +4,7 @@ import ContestRecord from '../models/contest-record.model';
 import * as ratingService from '../services/rating.service';
 import { success, fail } from '../utils/response';
 import User from '../models/user.model';
+import Notification from '../models/notification.model';
 
 // 1. 录入比赛/奖项
 export const addContestRecord = async (req: Request, res: Response) => {
@@ -68,7 +69,7 @@ export const getUserContestRecords = async (req: Request, res: Response) => {
 export const deleteContestRecord = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+    console.log(id);
     // 找到记录以便获取 userId
     const record = await ContestRecord.findById(id);
     if (!record) return fail(res, '记录不存在', 404);
@@ -77,13 +78,21 @@ export const deleteContestRecord = async (req: Request, res: Response) => {
 
     // 删除
     await ContestRecord.findByIdAndDelete(id);
-
+    
     // [关键步骤] 删除后也要触发重算！
     await ratingService.updateUserTotalRating(userId);
 
+    await Notification.create({
+      userId: userId,
+      title: '⚠️ 比赛荣誉记录被删除',
+      content: `因为系统Rating计算出错等原因, 您的本次比赛记录 ${record.name} 被管理员删除, Rating已重新计算。`,
+      type: 'warning',
+      relatedId: id
+    });
+
     success(res, null, '删除成功, Rating 已重新计算');
   } catch (error: any) {
-    fail(res, '删除失败', 500);
+    fail(res, `删除失败:${error}`, 500);
   }
 };
 

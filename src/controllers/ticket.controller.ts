@@ -3,6 +3,7 @@ import Ticket from '../models/ticket.model';
 import ContestRecord from '../models/contest-record.model'; // 🟢 [新增] 引入比赛记录模型
 import * as ratingService from '../services/rating.service'; // 🟢 [新增] 引入算分服务
 import { success, fail } from '../utils/response';
+import Notification from '../models/notification.model';
 
 // 用户提交工单
 export const createTicket = async (req: Request, res: Response) => {
@@ -16,16 +17,16 @@ export const createTicket = async (req: Request, res: Response) => {
   }
 };
 
-// 获取工单列表 (管理员看所有，用户看自己)
+// 获取工单列表 (接口参赛权限校验)
 export const getTickets = async (req: Request, res: Response) => {
   try {
     // @ts-ignore
     const { role, userId } = req.user;
-    const { status } = req.query;
+    const { status, scope } = req.query;
     
     let filter: any = {};
     // 如果不是老师/队长，只能看自己的
-    if (role === 'Member') {
+    if (role === 'Member' || scope === 'me') {
       filter.userId = userId;
     }
     if (status) filter.status = status;
@@ -59,6 +60,16 @@ export const handleTicket = async (req: Request, res: Response) => {
       ticket.status = 'Rejected';
       ticket.adminComment = comment || '管理员未填写理由'; // 给个默认值
       await ticket.save();
+
+      // 发送驳回通知
+      await Notification.create({
+        userId: ticket.userId,
+        title: '⚠️ 申请被驳回',
+        content: `很遗憾，您申请的 "${ticket.contestName}" 被驳回。原因：${ticket.adminComment}`,
+        type: 'warning',
+        relatedId: ticket._id
+      });
+
       return success(res, null, '操作成功：已驳回申请');
     }
 
@@ -96,6 +107,15 @@ export const handleTicket = async (req: Request, res: Response) => {
       ticket.status = 'Approved';
       ticket.adminComment = '通过';
       await ticket.save();
+
+      // 发送通过通知
+      await Notification.create({
+        userId: ticket.userId,
+        title: '✅ 申请已通过',
+        content: `恭喜！您申请的 "${ticket.contestName}" 已审核通过并加分。`,
+        type: 'success',
+        relatedId: ticket._id
+      });
 
       return success(res, { rawScore }, '审核通过，已自动生成比赛记录并更新 Rating');
     }

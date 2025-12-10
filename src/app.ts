@@ -14,68 +14,22 @@ import configRoutes from './routes/config.routes';
 import ratingRoutes from './routes/rating.routes';
 import ticketRoutes from './routes/ticket.routes';
 import commonRoutes from './routes/common.routes';
+import notificationRoutes from './routes/notification.routes';
 
-import User from './models/user.model'; // 引入 User 模型
-import bcrypt from 'bcryptjs'; // 引入 bcrypt
+import User from './models/user.model';
+import bcrypt from 'bcryptjs';
 import path from 'path';
 
 const app = express();
 const PORT = 3000;
 
-// 1. 连接数据库
-connectDB().then(async () => {
-    await initGlobalConfig();
-
-    // 启动定时任务
-    initScheduledJobs()
-    // --- 🥚 自动初始化超级管理员逻辑 ---
-    try {
-        const count = await User.countDocuments();
-        if (count === 0) {
-            console.log('检测到数据库为空，正在初始化默认管理员...');
-
-            // 加密密码
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash('123456', salt);
-            
-            await User.create({
-                username: 'admin',          // 登录账号
-                password: hashedPassword,         // 加密密码
-                realName: '超级管理员',
-                role: 'Teacher',            // 必须是 Teacher 才有最高权限
-                status: 'Active',
-                
-                // 以下是必填项的默认填充值
-                gender: '男',
-                college: '计算机学院',
-                professional: '系统管理',
-                grade: '2023级',
-                studentId: '000000',        // 特殊学号
-                phone: '13800000000',
-                idCard: '110101199001010001',
-                email: 'admin@xcpc.com',
-                tsize: 'L',
-                ojInfo: {},
-                problemNumber: 0,
-                rating: 0,
-                ratingInfo: {}
-            });
-            
-            console.log('✅ 默认管理员已创建！');
-            console.log('👉 账号: admin');
-            console.log('👉 密码: 123456');
-        }
-    } catch (error) {
-        console.error('初始化管理员失败:', error);
-    }
-});
-
-// 2. 中间件配置
+// ==========================================
+// 1. 先配置中间件和路由 (Sync 代码先执行)
+// ==========================================
 app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
-app.use(cors()); // 允许跨域
-app.use(express.json()); // 解析 JSON Body
+app.use(cors());
+app.use(express.json());
 
-// 3. 注册路由
 app.use('/users', userRoutes);
 app.use('/contests', contestRoutes);
 app.use('/crawler', crawlerRoutes);
@@ -83,8 +37,54 @@ app.use('/config', configRoutes);
 app.use('/rating', ratingRoutes);
 app.use('/tickets', ticketRoutes);
 app.use('/common', commonRoutes);
+app.use('/notifications', notificationRoutes);
 
-// 4. 启动服务
-app.listen(PORT, () => {
-  console.log(`Server running at http://127.0.0.1:${PORT}`);
+// ==========================================
+// 2. 连接数据库 -> 初始化配置 -> 启动服务 (Async 链式调用)
+// ==========================================
+connectDB().then(async () => {
+    
+    // 🟢 第一步：必须先加载配置！
+    await initGlobalConfig();
+
+    // 🟢 第二步：启动定时任务
+    initScheduledJobs();
+
+    // 🟢 第三步：初始化管理员 (如果需要)
+    try {
+        const count = await User.countDocuments();
+        if (count === 0) {
+            console.log('检测到数据库为空，正在初始化默认管理员...');
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash('123456', salt);
+            
+            await User.create({
+                username: 'admin',
+                password: hashedPassword,
+                realName: '超级管理员',
+                role: 'Teacher',
+                status: 'Active',
+                avatar: '',
+                // ... 你的默认字段 ...
+                gender: '男', college: '计算机学院', professional: '系统管理', grade: '2023级',
+                studentId: '000000', phone: '13800000000', idCard: '110101199001010001',
+                email: 'admin@xcpc.com', tsize: 'L', ojInfo: {}, problemNumber: 0, rating: 0, ratingInfo: {}
+            });
+            console.log('✅ 默认管理员已创建！');
+        }
+    } catch (error) {
+        console.error('初始化管理员失败:', error);
+    }
+
+    // ==========================================
+    // 🟢 核心修复：只有上面全做完了，才允许启动服务器！
+    // ==========================================
+    app.listen(PORT, () => {
+        console.log(`Server running at http://127.0.0.1:${PORT}`);
+        console.log(`[System] 系统初始化完成，当前赛季: ${require('./services/config.service').getCurrentSeason()}`);
+    });
+
+}).catch((err) => {
+    console.error('❌ 数据库连接失败，服务器无法启动:', err);
+    process.exit(1);
 });

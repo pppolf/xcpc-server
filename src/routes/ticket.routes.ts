@@ -4,7 +4,7 @@ import { getTickets, createTicket, handleTicket } from '../controllers/ticket.co
 
 const router = Router();
 
-// 获取排行榜 (所有人可看)
+// 获取工单 (所有人可看)
 router.get('/', authMiddleware, getTickets);
 
 // 用户提交工单

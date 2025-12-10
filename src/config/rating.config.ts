@@ -1,8 +1,6 @@
 import { getCurrentSeason } from "../services/config.service";
 
 export const RATING_CONFIG = {
-  // 赛季设置
-  CURRENT_SEASON: getCurrentSeason(),
   
   // 1. 比赛分配置
   CONTEST: {
@@ -69,7 +67,7 @@ export const RATING_CONFIG = {
       'NCCCU_PROV_3': 0
     },
     // 奖项衰减系数 [本赛季, 上赛季, 上上赛季, ...]
-    AWARD_DECAY: [1.0, 0.8, 0.4, 0.2, 0] 
+    AWARD_DECAY: [1.0, 0.3, 0.2, 0.1, 0] 
   },
 
   // 2. 刷题分配置
@@ -86,6 +84,6 @@ export const RATING_CONFIG = {
 
   // 3. 历史衰减配置
   LEGACY: {
-    FACTOR: 0.6 // 衰减因子 s
+    FACTOR: 0.5 // 衰减因子 s
   }
 };
