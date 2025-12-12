@@ -28,7 +28,7 @@ export const refreshAll = async (req: Request, res: Response) => {
     
     success(res, result, `批量刷新完成：成功 ${result.successCount} 人，失败 ${result.failCount} 人`);
   } catch (error: any) {
-    fail(res, error.message || '批量刷新服务异常', 500);
+    fail(res, error.message || '批量刷新服务异常', 500, 500);
   }
 };
 

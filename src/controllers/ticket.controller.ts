@@ -13,7 +13,7 @@ export const createTicket = async (req: Request, res: Response) => {
     const ticket = await Ticket.create({ ...req.body, userId });
     success(res, ticket, '申请提交成功，请等待审核');
   } catch (e: any) {
-    fail(res, e.message);
+    fail(res, e.message, 500, 500);
   }
 };
 
@@ -37,7 +37,7 @@ export const getTickets = async (req: Request, res: Response) => {
       
     success(res, list);
   } catch (e: any) {
-    fail(res, e.message);
+    fail(res, e.message, 500, 500);
   }
 };
 

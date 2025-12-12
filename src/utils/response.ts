@@ -10,7 +10,7 @@ export const success = (res: Response, data: any, message: string = '操作成�
   });
 };
 
-export const fail = (res: Response, message: string = '操作失败', code: number = 400, status: number = 500) => {
+export const fail = (res: Response, message: string = '操作失败', code: number = 400, status: number = 200) => {
   // status 是 HTTP 状态码，code 是业务状态码
   res.status(status).json({
     success: false,

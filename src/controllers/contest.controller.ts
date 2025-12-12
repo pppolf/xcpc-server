@@ -58,7 +58,7 @@ export const getUserContestRecords = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     // 按时间倒序
-    const list = await ContestRecord.find({ userId }).sort({ contestDate: -1 });
+    const list = await ContestRecord.find({ userId }).sort({ season: -1 });
     success(res, list);
   } catch (error: any) {
     fail(res, '获取记录失败', 500);
@@ -69,10 +69,9 @@ export const getUserContestRecords = async (req: Request, res: Response) => {
 export const deleteContestRecord = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    console.log(id);
     // 找到记录以便获取 userId
     const record = await ContestRecord.findById(id);
-    if (!record) return fail(res, '记录不存在', 404);
+    if (!record) return fail(res, '记录不存在', 404, 404);
 
     const userId = record.userId.toString();
 

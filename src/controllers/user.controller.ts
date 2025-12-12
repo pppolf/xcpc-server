@@ -40,7 +40,7 @@ export const login = async (req: Request, res: Response) => {
     // 3. 返回
     success(res, { user, token }, '登录成功');
   } catch (error: any) {
-    fail(res, error.message || '登录失败', 401);
+    fail(res, error.message || '登录失败', 401, 401);
   }
 };
 
@@ -60,7 +60,7 @@ export const createUser = async (req: Request, res: Response) => {
        // 返回业务码 400，HTTP 状态码 200 (前端拦截器会拦截 code!=200)
        return fail(res, '学号或用户名已存在', 400);
     }
-    return fail(res, error.message || '新增失败', 400);
+    return fail(res, error.message || '新增失败', 400, 400);
   }
 };
 
@@ -147,10 +147,10 @@ export const getUserById = async (req: Request, res: Response) => {
     const { id } = req.params;
     // 排除密码字段
     const user = await User.findById(id).select('-password');
-    if (!user) return fail(res, '用户不存在');
+    if (!user) return fail(res, '用户不存在', 404);
     success(res, user);
   } catch (e: any) {
-    fail(res, e.message);
+    fail(res, e.message, 500, 500);
   }
 };
 
@@ -166,7 +166,7 @@ export const updatePassword = async (req: Request, res: Response) => {
     }
 
     const user = await User.findById(userId).select('+password');
-    if (!user) return fail(res, '用户不存在');
+    if (!user) return fail(res, '用户不存在', 404);
 
     // 1. 验证旧密码
     // 注意：如果是通过脚本批量导入的用户，可能没有加密，这里要做兼容处理
@@ -184,7 +184,7 @@ export const updatePassword = async (req: Request, res: Response) => {
 
     success(res, null, '密码修改成功');
   } catch (error: any) {
-    fail(res, error.message || '修改失败', 500);
+    fail(res, error.message || '修改失败', 500, 500);
   }
 };
 
@@ -198,7 +198,7 @@ export const resetUserPassword = async (req: Request, res: Response) => {
     }
 
     const user = await User.findById(userId);
-    if (!user) return fail(res, '目标用户不存在');
+    if (!user) return fail(res, '目标用户不存在', 404);
 
     // 直接覆盖密码，不需要验证旧密码
     const salt = await bcrypt.genSalt(10);
@@ -207,7 +207,7 @@ export const resetUserPassword = async (req: Request, res: Response) => {
 
     success(res, null, `已将用户 ${user.realName} 的密码重置`);
   } catch (error: any) {
-    fail(res, error.message || '重置失败', 500);
+    fail(res, error.message || '重置失败', 500, 500);
   }
 };
 
@@ -237,7 +237,7 @@ export const uploadAvatar = async (req: Request & { file?: Express.Multer.File }
     
     if (!currentUser) {
       fs.unlinkSync(req.file.path); // 回滚：删除刚上传的新图
-      return fail(res, '用户不存在');
+      return fail(res, '用户不存在', 404);
     }
 
     // 如果用户之前有头像，且不是默认头像，且文件确实存在于硬盘上，则删除它
@@ -272,6 +272,6 @@ export const uploadAvatar = async (req: Request & { file?: Express.Multer.File }
       fs.unlink(req.file.path, () => {});
     }
     console.error('上传头像异常:', error);
-    return fail(res, error.message || '头像上传失败');
+    return fail(res, error.message || '头像上传失败', 500, 500);
   }
 };

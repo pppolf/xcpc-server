@@ -25,7 +25,7 @@ export const readNotification = async (req: Request, res: Response) => {
     await Notification.findByIdAndUpdate(id, { isRead: true });
     success(res, null);
   } catch (error) {
-    fail(res, '操作失败');
+    fail(res, '操作失败', 500, 500);
   }
 };
 
@@ -36,6 +36,6 @@ export const readAllNotifications = async (req: Request, res: Response) => {
     await Notification.updateMany({ userId, isRead: false }, { isRead: true });
     success(res, null);
   } catch (error) {
-    fail(res, '操作失败');
+    fail(res, '操作失败', 500, 500);
   }
 };
