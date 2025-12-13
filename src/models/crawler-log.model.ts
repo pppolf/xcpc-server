@@ -9,12 +9,14 @@ const CrawlerLogSchema = new mongoose.Schema({
   
   // 这一刻爬取到的各个平台数据（快照）
   details: {
-    cf: { type: Number, default: 0 },
-    at: { type: Number, default: 0 },
-    nc: { type: Number, default: 0 },
-    lg: { type: Number, default: 0 },
-    cwnuoj: { type: Number, default: 0 }
+    codeforces: { type: Number, default: 0 },
+    atcoder:    { type: Number, default: 0 },
+    nowcoder:   { type: Number, default: 0 },
+    luogu:      { type: Number, default: 0 },
+    cwnuoj:     { type: Number, default: 0 }
   },
+
+  errors: { type: String, default: '' },
   
   // 这一刻的总题数
   totalSolved: { type: Number, required: true },

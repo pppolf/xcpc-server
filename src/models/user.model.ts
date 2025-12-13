@@ -32,6 +32,14 @@ export interface IUser extends Document {
     legacy: number;           // 历史衰减分 (R_legacy)
     activeCoefficient: number; // 当前活跃系数 (K_active)，前端展示给队员看
   };
+  ojStats: {
+    codeforces: number;
+    atcoder: number;
+    nowcoder: number;
+    luogu: number;
+    cwnuoj: number;
+    lastUpdate: Date;
+  };
 }
 
 // 2. 定义 Schema
@@ -66,7 +74,15 @@ const UserSchema: Schema = new Schema(
       problem: { type: Number, default: 0 },
       legacy: { type: Number, default: 0 },
       activeCoefficient: { type: Number, default: 1.0 } // 默认为 1.0
-    }
+    },
+    ojStats: {
+      codeforces: { type: Number, default: 0 },
+      atcoder:    { type: Number, default: 0 },
+      nowcoder:   { type: Number, default: 0 },
+      luogu:      { type: Number, default: 0 },
+      cwnuoj:     { type: Number, default: 0 },
+      lastUpdate: { type: Date, default: Date.now } 
+    },
   },
   { timestamps: true }
 );

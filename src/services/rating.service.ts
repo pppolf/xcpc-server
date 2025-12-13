@@ -56,9 +56,10 @@ export const batchSettleLastMonth = async () => {
   let count = 0;
 
   for (const user of users) {
+    const oldStats = user.ojStats || { codeforces: 0, atcoder: 0, nowcoder: 0, luogu: 0, cwnuoj: 0 };
     try {
       // 2. 现场爬取该用户“此时此刻”的总题数 (作为 10月1日 快照)
-      const crawlerRes = await fetchOjData(user.ojInfo); 
+      const crawlerRes = await fetchOjData(user.ojInfo, oldStats); 
       const currentTotal = crawlerRes.total;
 
       // 3. 寻找 “上个月初” 的快照

@@ -68,7 +68,7 @@ connectDB().then(async () => {
                 // ... 你的默认字段 ...
                 gender: '男', college: '计算机学院', professional: '系统管理', grade: '2023级',
                 studentId: '000000', phone: '13800000000', idCard: '110101199001010001',
-                email: 'admin@xcpc.com', tsize: 'L', ojInfo: {}, problemNumber: 0, rating: 0, ratingInfo: {}
+                email: 'admin@xcpc.com', tsize: 'L', ojInfo: {}, problemNumber: 0, rating: 0, ratingInfo: {}, ojStats: {}
             });
             console.log('✅ 默认管理员已创建！');
         }

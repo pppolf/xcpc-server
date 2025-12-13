@@ -16,7 +16,7 @@ const COMMON_HEADERS = {
 
 // 定义单项爬取结果接口
 interface CrawlerResult {
-  count: number;
+  count: number | null;
   error?: string; // 如果有错，这里存错误信息
 }
 
@@ -38,7 +38,7 @@ const fetchCodeforces = async (handle: string): Promise<CrawlerResult> => {
   } catch (error: any) {
     const msg = error.response?.status === 400 ? 'CF账号不存在或格式错误' : error.message;
     console.error(`CF Error [${handle}]:`, msg);
-    return { count: 0, error: `CF: ${msg}` };
+    return { count: null, error: `CF: ${msg}` };
   }
 };
 
@@ -47,7 +47,7 @@ const fetchAtCoder = async (handle: string): Promise<CrawlerResult> => {
   if (!handle) return { count: 0 };
   try {
     const url = `https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${handle}&from_second=0`;
-    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 15000 });
+    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 30000 });
     const solvedSet = new Set<string>();
     res.data.forEach((sub: any) => {
       if (sub.result === 'AC') solvedSet.add(sub.problem_id);
@@ -55,7 +55,7 @@ const fetchAtCoder = async (handle: string): Promise<CrawlerResult> => {
     return { count: solvedSet.size };
   } catch (error: any) {
     console.error(`AtCoder Error [${handle}]:`, error.message);
-    return { count: 0, error: `AT: ${error.message}` };
+    return { count: null, error: `AT: ${error.message}` };
   }
 };
 
@@ -73,10 +73,10 @@ const fetchNowCoder = async (userId: string): Promise<CrawlerResult> => {
         return false; 
       }
     });
-    return { count: isNaN(passedCount) ? 0 : passedCount };
+    return { count: isNaN(passedCount) ? null : passedCount };
   } catch (error: any) {
     console.error(`NC Error [${userId}]:`, error.message);
-    return { count: 0, error: `NC: ${error.message}` };
+    return { count: null, error: `NC: ${error.message}` };
   }
 };
 
@@ -132,9 +132,10 @@ const fetchLuogu = async (input: string): Promise<CrawlerResult> => {
   } catch (error: any) {
     const msg = error.response?.status === 403 ? '403被拦截' : error.message;
     console.error(`LG Error [${targetUid}]:`, msg);
-    return { count: 0, error: `LG: ${msg}` };
+    return { count: null, error: `LG: ${msg}` };
   }
 };
+
 
 // 爬取校内OJ
 const fetchCWNUOJ = async (input: string): Promise<CrawlerResult> => {
@@ -145,12 +146,19 @@ const fetchCWNUOJ = async (input: string): Promise<CrawlerResult> => {
     return { count: res.data.data };
   } catch (error: any) {
     console.error(`CWNUOJ Error [${input}]:`, error.message);
-    return { count: 0, error: `CWNUOJ: ${error.message}` };
+    return { count: null, error: `CWNUOJ: ${error.message}` };
   }
 }
 
+// 如果 newData 是 null (失败)，就用 oldData (数据库里的旧值)
+// 如果 newData 是 number，就用 newData
+const safeCount = (newData: number | null | undefined, oldData: number): number => {
+  if (newData === null || newData === undefined) return oldData;
+  return newData;
+};
+
 // 聚合函数 (收集错误)
-export const fetchOjData = async (ojInfo: any) => {
+export const fetchOjData = async (ojInfo: any, oldStats: any) => {
   console.log(`[Crawler] 开始爬取...`);
   const [cf, at, nc, lg, cwnuoj] = await Promise.all([
     fetchCodeforces(ojInfo.cf),
@@ -160,20 +168,25 @@ export const fetchOjData = async (ojInfo: any) => {
     fetchCWNUOJ(ojInfo.cwnuoj)
   ]);
 
-  console.log(`[Crawler] 结果: CF:${cf.count}, AT:${at.count}, NC:${nc.count}, LG:${lg.count}, CWNUOJ:${cwnuoj.count}`);
+  const newStats = {
+    codeforces: safeCount(cf.count, oldStats.codeforces),
+    atcoder:    safeCount(at.count, oldStats.atcoder),
+    nowcoder:   safeCount(nc.count, oldStats.nowcoder),
+    luogu:      safeCount(lg.count, oldStats.luogu),
+    cwnuoj:     safeCount(cwnuoj.count, oldStats.cwnuoj),
+    lastUpdate: new Date()
+  };
+
+  const total = newStats.codeforces + newStats.atcoder + newStats.nowcoder + newStats.luogu + newStats.cwnuoj;
+
+  console.log(`[Crawler] 结果: CF:${newStats.codeforces}, AT:${newStats.atcoder}, NC:${newStats.nowcoder}, LG:${newStats.luogu}, CWNUOJ:${newStats.cwnuoj}`);
   
   // 收集所有的非空错误信息
   const errors = [cf.error, at.error, nc.error, lg.error, cwnuoj.error].filter(Boolean) as string[];
 
   return { 
-    counts: {
-      cf: cf.count,
-      at: at.count,
-      nc: nc.count,
-      lg: lg.count,
-      cwnuoj: cwnuoj.count, 
-    },
-    total: cf.count + at.count + nc.count + lg.count + cwnuoj.count,
+    newStats,
+    total,
     errors // 返回错误列表
   };
 };
@@ -186,43 +199,47 @@ export const refreshUserSolvedStats = async (userId: string, triggerType: 'MANUA
   const user = await User.findById(userId);
   if (!user) throw new Error('用户不存在');
 
+  // 1. 获取旧数据 (作为缓存)
+  // 确保 ojStats 存在 (如果是老数据可能没有这个字段)
+  const oldStats = user.ojStats || { codeforces: 0, atcoder: 0, nowcoder: 0, luogu: 0, cwnuoj: 0 };
+
   // 1. 爬取数据
-  const { counts, total, errors } = await fetchOjData(user.ojInfo);
+  const { newStats, total, errors } = await fetchOjData(user.ojInfo, oldStats);
   
   // 2. 查上次记录
-  const lastLog = await CrawlerLog.findOne({ userId }).sort({ createdAt: -1 });
-  const lastTotal = lastLog ? lastLog.totalSolved : 0;
-  const increment = Math.max(0, total - lastTotal); 
+  const lastTotal = user.problemNumber || 0;
+  const increment = Math.max(0, total - lastTotal);
 
-  // 3. 记日志
-  await CrawlerLog.create({
-    userId,
-    triggerType,
-    details: counts,
-    totalSolved: total,
-    increment: increment
-  });
+  user.ojStats = newStats; // 更新分项缓存
+  user.problemNumber = total; // 更新总数
+  await user.save();
 
-  // 4. 更新数据库 (仅更新数量)
   if (increment > 0) {
     const now = new Date();
-    user.problemNumber = total;
-    await user.save();
-
     await PracticeMonthStats.findOneAndUpdate(
       { userId, year: now.getFullYear(), month: now.getMonth() + 1 },
-      { 
-        $set: { problemCount: increment }, 
-      },
+      { $inc: { problemCount: increment } }, // 使用 $inc 原子增加，防止并发覆盖
       { upsert: true }
     );
   }
+
+  // 7. 记日志
+  await CrawlerLog.create({
+    userId,
+    triggerType,
+    details: newStats, // 记录详细分项
+    totalSolved: total,
+    increment: increment,
+    errors: errors.length > 0 ? errors.join('; ') : undefined // 记录报错以便排查
+  });
+
+  console.log(`[Crawler] ${user.realName} 更新完成。Total: ${total} (+${increment})。Warnings: ${errors.length}`);
 
   return { 
     previous: lastTotal, 
     current: total, 
     increment,
-    details: counts,
+    details: newStats,
     errors // 🔴 将错误信息透传给 Controller -> Frontend
   };
 };
