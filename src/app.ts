@@ -15,6 +15,9 @@ import ratingRoutes from './routes/rating.routes';
 import ticketRoutes from './routes/ticket.routes';
 import commonRoutes from './routes/common.routes';
 import notificationRoutes from './routes/notification.routes';
+import noticeRoutes from './routes/notice.routes';
+import honorRoutes from './routes/honor.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 
 import User from './models/user.model';
 import bcrypt from 'bcryptjs';
@@ -26,8 +29,8 @@ const PORT = 3000;
 // ==========================================
 // 1. 先配置中间件和路由 (Sync 代码先执行)
 // ==========================================
-app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 app.use(cors());
+app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 app.use(express.json());
 
 app.use('/users', userRoutes);
@@ -38,6 +41,9 @@ app.use('/rating', ratingRoutes);
 app.use('/tickets', ticketRoutes);
 app.use('/common', commonRoutes);
 app.use('/notifications', notificationRoutes);
+app.use('/notices', noticeRoutes);
+app.use('/honors', honorRoutes);
+app.use('/dashboard', dashboardRoutes);
 
 // ==========================================
 // 2. 连接数据库 -> 初始化配置 -> 启动服务 (Async 链式调用)

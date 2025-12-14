@@ -22,7 +22,7 @@ export const getTickets = async (req: Request, res: Response) => {
   try {
     // @ts-ignore
     const { role, userId } = req.user;
-    const { status, scope } = req.query;
+    const { status, scope, page, pageSize } = req.query;
     
     let filter: any = {};
     // 如果不是老师/队长，只能看自己的
@@ -31,11 +31,35 @@ export const getTickets = async (req: Request, res: Response) => {
     }
     if (status) filter.status = status;
 
-    const list = await Ticket.find(filter)
-      .populate('userId', 'realName studentId')
-      .sort({ createdAt: -1 });
-      
-    success(res, list);
+    const pageNum = page ? parseInt(page as string) : 0;
+    const sizeNum = pageSize ? parseInt(pageSize as string) : 10;
+    if (pageNum > 0) {
+      // 🟢 分支 A: 分页模式 (返回 { list, total })
+      const skip = (pageNum - 1) * sizeNum;
+
+      // 并行执行：查总数 + 查当前页数据
+      const [total, list] = await Promise.all([
+        Ticket.countDocuments(filter),
+        Ticket.find(filter)
+          .populate('userId', 'realName studentId') // 关联用户信息
+          .sort({ createdAt: -1 }) // 按时间倒序
+          .skip(skip)
+          .limit(sizeNum)
+      ]);
+
+      success(res, {
+        list,
+        total,
+        page: pageNum,
+        pageSize: sizeNum
+      });
+    } else {
+      const list = await Ticket.find(filter)
+        .populate('userId', 'realName studentId')
+        .sort({ createdAt: -1 });
+
+      success(res, {list});
+    }   
   } catch (e: any) {
     fail(res, e.message, 500, 500);
   }
