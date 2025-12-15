@@ -40,7 +40,7 @@ export const login = async (req: Request, res: Response) => {
     // 3. 返回
     success(res, { user, token }, '登录成功');
   } catch (error: any) {
-    fail(res, error.message || '登录失败', 401, 401);
+    fail(res, error.message || '登录失败', 401);
   }
 };
 
