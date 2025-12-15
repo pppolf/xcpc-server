@@ -88,9 +88,9 @@ export const findAllUsers = async (query: UserQuery) => {
           $switch: {
             branches: [
               { case: { $eq: ['$role', 'Captain'] }, then: 1 },        // 队长排第 1
-              { case: { $eq: ['$role', 'Vice-Captain'] }, then: 2 },        // 队长排第 1
-              { case: { $eq: ['$role', 'Student-Coach'] }, then: 3 },  // 学生教练排第 2
-              { case: { $eq: ['$role', 'Member'] }, then: 4 }          // 普通队员排第 3
+              { case: { $eq: ['$role', 'Vice-Captain'] }, then: 2 },        // 副队长排第 2
+              { case: { $eq: ['$role', 'Student-Coach'] }, then: 3 },  // 学生教练排第 3
+              { case: { $eq: ['$role', 'Member'] }, then: 4 }          // 普通队员排第 4
             ],
             default: 99 // 其他角色（如 Teacher 如果被查出来）排最后
           }

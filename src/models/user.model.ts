@@ -23,6 +23,7 @@ export interface IUser extends Document {
     nc: string;
     lg: string;
     cwnuoj: string;
+    vjudge: string;
   };
   problemNumber: number;
   rating: number;
@@ -66,6 +67,7 @@ const UserSchema: Schema = new Schema(
       nc: { type: String, default: '' },
       lg: { type: String, default: '' },
       cwnuoj: { type: String, default: '' },
+      vjudge: { type: String, default: '' },
     },
     problemNumber: { type: Number, default: 0 },
     rating: { type: Number, default: 0, index: -1 },

@@ -18,6 +18,7 @@ import notificationRoutes from './routes/notification.routes';
 import noticeRoutes from './routes/notice.routes';
 import honorRoutes from './routes/honor.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import trainingRoutes from './routes/training.routes';
 
 import User from './models/user.model';
 import bcrypt from 'bcryptjs';
@@ -44,6 +45,7 @@ app.use('/notifications', notificationRoutes);
 app.use('/notices', noticeRoutes);
 app.use('/honors', honorRoutes);
 app.use('/dashboard', dashboardRoutes);
+app.use('/training', trainingRoutes); // 新增训练路由
 
 // ==========================================
 // 2. 连接数据库 -> 初始化配置 -> 启动服务 (Async 链式调用)
