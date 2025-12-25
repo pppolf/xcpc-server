@@ -7,7 +7,7 @@ export const getMyNotifications = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId || (req as any).user._id;
     // 按时间倒序
-    const list = await Notification.find({ userId }).sort({ createdAt: -1 });
+    const list = await Notification.find({ userId }).sort({ createdAt: -1 }).limit(20);
     
     // 计算未读数量
     const unreadCount = await Notification.countDocuments({ userId, isRead: false });
