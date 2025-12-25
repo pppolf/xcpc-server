@@ -7,7 +7,7 @@ const router = Router();
 router.get('/', authMiddleware, getTrainings);
 router.get('/:id', authMiddleware, getTrainingDetail);
 router.post('/', authMiddleware, roleMiddleware(['Teacher', 'Captain','Vice-Captain', 'Student-Coach']), createTraining);
-router.post('/:id/refresh', authMiddleware, roleMiddleware(['Teacher', 'Captain','Vice-Captain', 'Student-Coach']), refreshTraining); // 刷新数据接口
+router.post('/:id/refresh', authMiddleware, refreshTraining); // 刷新数据接口
 router.delete('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain','Vice-Captain', 'Student-Coach']), deleteTraining);
 router.put('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain','Vice-Captain', 'Student-Coach']), updateTraining);
 router.post('/:id/import', authMiddleware, roleMiddleware(['Teacher', 'Captain','Vice-Captain', 'Student-Coach']), importTrainingData);
