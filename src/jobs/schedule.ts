@@ -2,6 +2,8 @@
 import cron from 'node-cron';
 import { refreshAllMembers } from '../services/crawler.service';
 import { batchSettleLastMonth } from '../services/rating.service';
+import { fetchAllUpcoming } from '../utils/crawlers/upcoming';
+import Upcoming from '../models/upcoming.model';
 
 // 初始化定时任务
 export const initScheduledJobs = () => {
@@ -28,6 +30,26 @@ export const initScheduledJobs = () => {
       console.log(`[Job] 月度结算完成，共处理 ${count} 人`);
     } catch (e) {
       console.error('[Job] 月度结算异常:', e);
+    }
+  });
+
+  // 每 2 小时抓取一次
+  cron.schedule('0 */2 * * *', async () => {
+    console.log('[Crawler] 开始抓取近期赛事...');
+    try {
+      const contests = await fetchAllUpcoming();
+      if (contests.length > 0) {
+        // 1. 删除所有旧的爬虫数据 (保留 Manual 数据!)
+        await Upcoming.deleteMany({ type: 'Crawled' });
+        
+        // 2. 插入新数据
+        const docs = contests.map(c => ({ ...c, type: 'Crawled' }));
+        await Upcoming.insertMany(docs);
+        
+        console.log(`[Crawler] 赛事更新完成: 抓取到 ${docs.length} 场`);
+      }
+    } catch (e) {
+      console.error('[Crawler] 任务失败:', e);
     }
   });
 };

@@ -21,6 +21,7 @@ import dashboardRoutes from './routes/dashboard.routes';
 import trainingRoutes from './routes/training.routes';
 import submissionRoutes from './routes/submission.routes';
 import statsRoutes from './routes/stats.routes';
+import upcomingRoutes from './routes/upcoming.routes';
 
 import User from './models/user.model';
 import bcrypt from 'bcryptjs';
@@ -50,6 +51,7 @@ app.use('/dashboard', dashboardRoutes);
 app.use('/training', trainingRoutes);
 app.use('/submissions', submissionRoutes);
 app.use('/stats', statsRoutes)
+app.use('/upcoming', upcomingRoutes);
 
 // ==========================================
 // 2. 连接数据库 -> 初始化配置 -> 启动服务 (Async 链式调用)
