@@ -34,7 +34,7 @@ export const syncLuogu = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.userId
     const username = req.params.username as string;
-    const client_id = req.params.client_id as string;
+    const client_id = req.query.client_id as string;
     const crawlResult = await getLuogu(username, userId, client_id); 
     success(res, crawlResult, `同步完成,新增 ${crawlResult?.new} 条 AC 数据。`);
   } catch (e: any) {
