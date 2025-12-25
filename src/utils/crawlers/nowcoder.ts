@@ -84,7 +84,7 @@ export const crawlNowCoder = async (userId: string) => {
         // 说明这道题（以及更早的题）都已经入库了，可以直接停止
         const exists = await Submission.exists({ 
           platform: 'NowCoder', 
-          problemId: problemId
+          remoteId: remoteId
         });
 
         if (exists) {
