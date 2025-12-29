@@ -5,6 +5,7 @@ import { crawlCodeForces } from '../utils/crawlers/codeforces';
 import { crawlAtCoder } from '../utils/crawlers/atcoder';
 import { crawlNowCoder } from '../utils/crawlers/nowcoder';
 import { ObjectId } from 'mongoose';
+import { AtCoderCookieExpiredError } from '../utils/errors';
 
 export const syncUserSubmissions = async (userId: string, client_id: string) => {
   const user = await User.findById(userId);
@@ -188,6 +189,9 @@ export const getAtCoder = async (username: string, userId: ObjectId) => {
         new: newCount,
     };
   } catch (e) {
+    if (e instanceof AtCoderCookieExpiredError) {
+      throw e; 
+    }
     console.log(e);
   }
 }

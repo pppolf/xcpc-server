@@ -5,6 +5,7 @@ import MonthlySnapshot from '../models/monthly-snapshot.model'
 import User from '../models/user.model';
 import * as ratingService from '../services/rating.service';
 import { archiveAndResetSeason } from '../services/rating.service';
+import GlobalSetting from '../models/global-setting.model';
 
 // 获取当前赛季
 export const getSeason = (req: Request, res: Response) => {
@@ -41,6 +42,29 @@ export const setSeason = async (req: Request, res: Response) => {
     fail(res, error.message || '赛季切换失败', 500);
   }
 };
+
+// 设置 AtCoder Cookie
+export const setAtCoderCookie = async (req: Request, res: Response) => {
+  const { cookieValue } = req.body
+  if (!cookieValue) {
+    return fail(res, 'Cookie value is required', 400);
+  }
+  await GlobalSetting.findOneAndUpdate(
+    { key: 'atcoder_cookie' },
+    { 
+      value: cookieValue,
+      description: 'AtCoder Session Cookie (REVEL_SESSION)'
+    },
+    { upsert: true, new: true }
+  );
+
+  return success(res, null, 'AtCoder Cookie updated successfully!')
+}
+
+export const getAtCoderCookie = async (req: Request, res: Response) => {
+  const config = await GlobalSetting.findOne({ key: 'atcoder_cookie' });
+  return success(res, config?.value || '');
+}
 
 export const initSnapshots = async (req: Request, res: Response) => {
   const now = new Date();

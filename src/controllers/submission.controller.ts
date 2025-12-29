@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { getAtCoder, getCodeForces, getLuogu, getNowCoder, syncUserSubmissions } from '../services/submissions.service';
 import { fail, success } from '../utils/response';
 import Notification from '../models/notification.model';
+import User from '../models/user.model';
 
 /**
  * 通用后台任务执行器
@@ -13,7 +14,8 @@ const runBackgroundTask = (userId: string, platform: string, taskFn: () => Promi
   // 🟢 关键：不使用 await，让它在后台跑
   taskFn()
     .then(async () => {
-      console.log(`[Sync] ${platform} 同步成功 - User: ${userId}`);
+      const user = await User.findById(userId).select('-password');
+      console.log(`[Sync] ${platform} 同步成功 - User: ${user?.realName}, uid: ${userId}`);
       // ✅ 成功通知
       await Notification.create({
         userId,
@@ -24,7 +26,8 @@ const runBackgroundTask = (userId: string, platform: string, taskFn: () => Promi
       });
     })
     .catch(async (err) => {
-      console.error(`[Sync] ${platform} 同步失败 - User: ${userId}`, err);
+      const user = await User.findById(userId).select('-password');
+      console.error(`[Sync] ${platform} 同步失败 - User: ${user?.realName}, uid: ${userId}`, err);
       // ❌ 失败通知
       await Notification.create({
         userId,
@@ -97,7 +100,7 @@ export const syncNowCoder = async (req: Request, res: Response) => {
   }
 }
 
-// 5. 同步所有OJ
+// 5. 同步所有OJ - 废弃
 export const syncData = async (req: Request, res: Response) => {
   try {
     const targetUserId = req.query.userId || req.user?.userId;
