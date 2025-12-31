@@ -25,7 +25,7 @@ const fetchCodeforces = async (handle: string): Promise<CrawlerResult> => {
   if (!handle) return { count: 0 };
   try {
     const url = `https://codeforces.com/api/user.status?handle=${handle}&from=1&count=10000`;
-    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 15000 });
+    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 150000 });
     if (res.data.status !== 'OK') return { count: 0, error: 'CF API Status not OK' };
     
     const solvedSet = new Set<string>();
@@ -37,7 +37,7 @@ const fetchCodeforces = async (handle: string): Promise<CrawlerResult> => {
     return { count: solvedSet.size };
   } catch (error: any) {
     const msg = error.response?.status === 400 ? 'CF账号不存在或格式错误' : error.message;
-    console.error(`CF Error [${handle}]:`, msg);
+    // console.error(`CF Error [${handle}]:`, msg);
     return { count: null, error: `CF: ${msg}` };
   }
 };
@@ -47,14 +47,14 @@ const fetchAtCoder = async (handle: string): Promise<CrawlerResult> => {
   if (!handle) return { count: 0 };
   try {
     const url = `https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${handle}&from_second=0`;
-    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 30000 });
+    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 50000 });
     const solvedSet = new Set<string>();
     res.data.forEach((sub: any) => {
       if (sub.result === 'AC') solvedSet.add(sub.problem_id);
     });
     return { count: solvedSet.size };
   } catch (error: any) {
-    console.error(`AtCoder Error [${handle}]:`, error.message);
+    // console.error(`AtCoder Error [${handle}]:`, error.message);
     return { count: null, error: `AT: ${error.message}` };
   }
 };
@@ -64,7 +64,7 @@ const fetchNowCoder = async (userId: string): Promise<CrawlerResult> => {
   if (!userId) return { count: 0 };
   try {
     const url = `https://ac.nowcoder.com/acm/contest/profile/${userId}/practice-coding`;
-    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 10000 });
+    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 100000 });
     const $ = cheerio.load(res.data);
     let passedCount = 0;
     $('.my-state-item').each((i, el) => {
@@ -75,7 +75,7 @@ const fetchNowCoder = async (userId: string): Promise<CrawlerResult> => {
     });
     return { count: isNaN(passedCount) ? null : passedCount };
   } catch (error: any) {
-    console.error(`NC Error [${userId}]:`, error.message);
+    // console.error(`NC Error [${userId}]:`, error.message);
     return { count: null, error: `NC: ${error.message}` };
   }
 };
@@ -86,7 +86,7 @@ const getLuoguUid = async (keyword: string): Promise<string | null> => {
     const searchUrl = `https://www.luogu.com.cn/api/user/search?keyword=${encodeURIComponent(keyword)}`;
     const res = await axios.get(searchUrl, {
       headers: { ...COMMON_HEADERS, 'x-requested-with': 'XMLHttpRequest' },
-      timeout: 5000
+      timeout: 50000
     });
     if (res.data?.users?.length > 0) return res.data.users[0].uid.toString();
     return null;
@@ -107,7 +107,7 @@ const fetchLuogu = async (input: string): Promise<CrawlerResult> => {
     const url = `https://www.luogu.com.cn/user/${targetUid}`;
     const res = await axios.get(url, { 
       headers: { ...COMMON_HEADERS, 'Referer': 'https://www.luogu.com.cn/', 'x-requested-with': 'XMLHttpRequest' },
-      timeout: 10000,
+      timeout: 100000,
       maxRedirects: 5 
     });
     
@@ -131,7 +131,7 @@ const fetchLuogu = async (input: string): Promise<CrawlerResult> => {
     return { count };
   } catch (error: any) {
     const msg = error.response?.status === 403 ? '403被拦截' : error.message;
-    console.error(`LG Error [${targetUid}]:`, msg);
+    // console.error(`LG Error [${targetUid}]:`, msg);
     return { count: null, error: `LG: ${msg}` };
   }
 };
@@ -142,10 +142,10 @@ const fetchCWNUOJ = async (input: string): Promise<CrawlerResult> => {
   if (!input) return { count: 0 };
   try {
     const url = `https://oj.cwnu.online-judge.cn/api/stats/${input}`;
-    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 15000 });
+    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 150000 });
     return { count: res.data.data };
   } catch (error: any) {
-    console.error(`CWNUOJ Error [${input}]:`, error.message);
+    // console.error(`CWNUOJ Error [${input}]:`, error.message);
     return { count: null, error: `CWNUOJ: ${error.message}` };
   }
 }
@@ -183,6 +183,8 @@ export const fetchOjData = async (ojInfo: any, oldStats: any) => {
   
   // 收集所有的非空错误信息
   const errors = [cf.error, at.error, nc.error, lg.error, cwnuoj.error].filter(Boolean) as string[];
+
+  console.log(errors);
 
   return { 
     newStats,
