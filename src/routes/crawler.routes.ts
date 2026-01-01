@@ -7,6 +7,8 @@ const router = Router();
 // 手动刷新 (管理员可以刷新，这里简单点先只给管理员)
 router.post('/refresh', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), crawlerController.refreshUser);
 
+router.post('/refresh-all', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), crawlerController.refreshAll);
+
 router.get('/targets', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), crawlerController.getRefreshTargets);
 
 export default router;

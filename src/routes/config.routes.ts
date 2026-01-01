@@ -10,6 +10,9 @@ router.get('/season', configController.getSeason);
 // 修改赛季 (只有老师/队长可以)
 router.post('/season', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), configController.setSeason);
 
+// 管理员用 - 强制结算
+router.post('/forceSettle', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), configController.forceSettle)
+
 // 设置 AtCoder Cookie
 router.post('/atcoder_cookie', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), configController.setAtCoderCookie);
 router.get('/atcoder_cookie', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), configController.getAtCoderCookie);

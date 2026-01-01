@@ -184,7 +184,9 @@ export const fetchOjData = async (ojInfo: any, oldStats: any) => {
   // 收集所有的非空错误信息
   const errors = [cf.error, at.error, nc.error, lg.error, cwnuoj.error].filter(Boolean) as string[];
 
-  console.log(errors);
+  if (errors.length > 0) {
+    console.log(errors);
+  }
 
   return { 
     newStats,
