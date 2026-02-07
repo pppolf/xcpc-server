@@ -5,6 +5,7 @@ export const normalizeDifficulty = (platform: string, raw: string | number): num
   switch (platform) {
     case 'CodeForces':
     case 'AtCoder':
+    case 'NowCoder':
       // 直接返回原始分数，如果无效则返回 0
       return isNaN(val) ? 0 : val;
 
@@ -24,8 +25,6 @@ export const normalizeDifficulty = (platform: string, raw: string | number): num
       };
       // 如果传入的是数字，直接映射；如果是字符串(防止意外)，尝试转数字
       return luoguMap[val] || 0;
-
-    case 'NowCoder':
     case 'CWNUOJ':
     default:
       // 其他平台难度统一为 0 (前端渲染时判断为 0 则显示 N/A)
