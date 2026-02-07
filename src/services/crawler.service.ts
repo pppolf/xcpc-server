@@ -141,7 +141,7 @@ const fetchLuogu = async (input: string): Promise<CrawlerResult> => {
 const fetchCWNUOJ = async (input: string): Promise<CrawlerResult> => {
   if (!input) return { count: 0 };
   try {
-    const url = `https://oj.cwnu.online-judge.cn/api/stats/${input}`;
+    const url = `https://oj.cwnupaa.com/api/stats/${input}`;
     const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 150000 });
     return { count: res.data.data };
   } catch (error: any) {
