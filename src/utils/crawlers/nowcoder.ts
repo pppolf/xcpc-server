@@ -93,7 +93,6 @@ const getProblemDifficulty = async (numericId: string, forceUpdate = false): Pro
 
     // 如果没找到或 API 结构不对，存一个 0 防止重复查询无效 ID
     difficultyCache[numericId] = 0;
-    console.log(`ok ${numericId}`);
     return 0;
   } catch (error) {
     console.warn(
