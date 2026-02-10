@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import * as https from 'https';
 
 export interface RawContestData {
   name: string;
@@ -65,17 +66,28 @@ const fetchAtCoder = async (): Promise<RawContestData[]> => {
 const fetchNowCoder = async (): Promise<RawContestData[]> => {
   try {
     // ⚠️ 必须带 User-Agent
+    const agent = new https.Agent({
+        keepAlive: true,
+        rejectUnauthorized: false, // 忽略 SSL 报错
+        family: 4 // 🔴 强制使用 IPv4 (解决部分云服务器 IPv6 解析超时问题)
+    });
     const { data } = await axios.get('https://ac.nowcoder.com/acm/contest/vip-index', {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://ac.nowcoder.com/',
+        'Host': 'ac.nowcoder.com', 
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Connection': 'keep-alive'
       },
-      timeout: 10000
+      timeout: 30000,
+      httpsAgent: agent
     });
     
     const $ = cheerio.load(data);
     const list: RawContestData[] = [];
 
-    // 🟢 根据提供的 HTML 结构，遍历 .platform-item-cont
+    // 🟢 根据提供的 HTML结构，遍历 .platform-item-cont
     $('.platform-item-cont').each((_, el) => {
       const $el = $(el);
       

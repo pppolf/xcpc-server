@@ -5,6 +5,7 @@ import User from '../models/user.model';
 import CrawlerLog from '../models/crawler-log.model';
 import PracticeMonthStats from '../models/practice-stats.model';
 import { getCurrentSeason } from './config.service';
+import * as https from 'https';
 
 const COMMON_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -142,7 +143,11 @@ const fetchCWNUOJ = async (input: string): Promise<CrawlerResult> => {
   if (!input) return { count: 0 };
   try {
     const url = `https://oj.cwnupaa.com/api/stats/${input}`;
-    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 150000 });
+    const agent = new https.Agent({
+      rejectUnauthorized: false, // 忽略证书验证错误
+      ciphers: 'DEFAULT@SECLEVEL=1' // 降低安全级别，允许使用旧版加密套件
+    });
+    const res = await axios.get(url, { headers: COMMON_HEADERS, timeout: 150000, httpsAgent: agent });
     return { count: res.data.data };
   } catch (error: any) {
     // console.error(`CWNUOJ Error [${input}]:`, error.message);

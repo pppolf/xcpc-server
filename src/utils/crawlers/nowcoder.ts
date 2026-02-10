@@ -2,6 +2,7 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import * as fs from "fs";
 import * as path from "path";
+import * as https from "https";
 import { normalizeDifficulty } from "./index";
 import Submission from "../../models/submission.model"; // 引入模型用于查重
 
@@ -49,7 +50,7 @@ loadCache();
 // 通用 Headers
 const COMMON_HEADERS = {
   "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
   Accept:
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
   Host: "ac.nowcoder.com",
@@ -61,7 +62,10 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * 获取单个题目难度
  * 优先查本地缓存，没有则查 API
  */
-const getProblemDifficulty = async (numericId: string, forceUpdate = false): Promise<number> => {
+const getProblemDifficulty = async (
+  numericId: string,
+  forceUpdate = false,
+): Promise<number> => {
   // 1. 查缓存
   if (difficultyCache[numericId] !== undefined && !forceUpdate) {
     return difficultyCache[numericId];
@@ -85,7 +89,10 @@ const getProblemDifficulty = async (numericId: string, forceUpdate = false): Pro
       );
 
       if (targetProblem) {
-        const diff = targetProblem.difficulty < 9 ? normalizeDifficulty("Luogu", targetProblem.difficulty) : targetProblem.difficulty; // 兼容洛谷的特殊难度分
+        const diff =
+          targetProblem.difficulty < 9
+            ? normalizeDifficulty("Luogu", targetProblem.difficulty)
+            : targetProblem.difficulty; // 兼容洛谷的特殊难度分
         difficultyCache[numericId] = diff; // 更新内存缓存
         return diff;
       }
@@ -116,6 +123,12 @@ export const crawlNowCoder = async (userId: string) => {
   }
 
   try {
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+      family: 4, // 🔴 关键：强制 IPv4，解决云服务器超时问题
+      keepAlive: true,
+    });
+
     while (!shouldStop) {
       //  构建 URL
       // statusTypeFilter=5: 代表 "答案正确" (Accepted)
@@ -124,8 +137,13 @@ export const crawlNowCoder = async (userId: string) => {
       const url = `https://ac.nowcoder.com/acm/contest/profile/${userId}/practice-coding?pageSize=200&statusTypeFilter=5&orderType=DESC&page=${page}`;
 
       const res = await axios.get(url, {
-        headers: COMMON_HEADERS,
-        timeout: 10000,
+        headers: {
+          ...COMMON_HEADERS,
+          Referer: `https://ac.nowcoder.com/acm/contest/profile/${userId}/practice-coding`,
+          Connection: "keep-alive",
+        },
+        timeout: 30000,
+        httpsAgent: agent,
       });
       const $ = cheerio.load(res.data);
 
@@ -269,7 +287,7 @@ export const refreshNowCoderDifficultyCache = async () => {
     // 策略：只针对记录为 0 (未找到/失败) 的题目尝试重新获取
     // 这样可以每天自动修复新的或者之前超时的题目
     if (difficultyCache[id] === 0) {
-      const newDiff = await getProblemDifficulty(id, true); 
+      const newDiff = await getProblemDifficulty(id, true);
       if (newDiff !== 0) {
         updatedCount++;
         console.log(
