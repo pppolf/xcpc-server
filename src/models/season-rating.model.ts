@@ -7,6 +7,7 @@ export interface ISeasonRating extends Document {
   finalRating: number;   // 赛季结束时的总分
   contestScore: number;  // 当时的比赛分
   practiceScore: number; // 当时的刷题分
+  trainingTeam?: string; // 当时所在分队
   rank: number;          // 当时全队排名
   createdAt: Date;
 }
@@ -17,6 +18,7 @@ const SeasonRatingSchema: Schema = new Schema({
   finalRating: { type: Number, default: 0 },
   contestScore: { type: Number, default: 0 },
   practiceScore: { type: Number, default: 0 },
+  trainingTeam: { type: String, enum: ['First', 'Second'], default: 'Second' },
   rank: { type: Number, default: 0 } // 记录排名，方便做历史回顾
 }, { timestamps: true });
 

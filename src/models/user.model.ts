@@ -17,6 +17,7 @@ export interface IUser extends Document {
   avatar: string;
   role: string;
   status: string;
+  trainingTeam: string;
   ojInfo: {
     cf: string;
     at: string;
@@ -61,6 +62,7 @@ const UserSchema: Schema = new Schema(
     avatar: { type: String, default: '',},
     role: { type: String, default: 'Member' },
     status: { type: String, default: 'Active' },
+    trainingTeam: { type: String, enum: ['First', 'Second'], default: 'Second' },
     ojInfo: {
       cf: { type: String, default: '' },
       at: { type: String, default: '' },

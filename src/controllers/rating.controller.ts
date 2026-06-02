@@ -35,7 +35,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
       const users = await User.find({ 
         role: { $ne: 'Teacher' }, 
       })
-      .select('realName studentId college role rating status ratingInfo')
+      .select('realName studentId college role trainingTeam rating status ratingInfo')
       .sort({ rating: -1, 'ratingInfo.contest': -1 }) // 总分降序，同分看比赛分
       .lean();
 
@@ -46,6 +46,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
         studentId: u.studentId,
         college: u.college,
         role: u.role,
+        trainingTeam: u.trainingTeam,
         status: u.status,
         // 统一字段名
         total: u.rating,
@@ -58,7 +59,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
     } else {
       // === B. 查询历史赛季 (读 SeasonRating 快照表) ===
       const records = await SeasonRating.find({ season: targetSeason })
-        .populate('userId', 'realName studentId college role') // 关联用户信息
+        .populate('userId', 'realName studentId college role trainingTeam') // 关联用户信息
         .sort({ finalRating: -1 })
         .lean();
 
@@ -69,6 +70,7 @@ export const getLeaderboard = async (req: Request, res: Response) => {
         studentId: r.userId?.studentId || 'N/A',
         college: r.userId?.college || '',
         role: r.userId?.role || 'Member',
+        trainingTeam: r.trainingTeam || r.userId?.trainingTeam,
         status: r.userId?.status || 'Active',
         // 统一字段名
         total: r.finalRating,

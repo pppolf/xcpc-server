@@ -10,6 +10,7 @@ interface UserQuery {
   gender?: string;
   role?: string;
   status?: string;
+  trainingTeam?: string;
   username?: string; // 登录查找用
   studentId?: string; // 登录查找用
   page?: string;
@@ -68,6 +69,7 @@ export const findAllUsers = async (query: UserQuery) => {
   if (query.gender) matchStage.gender = query.gender;
   if (query.role) matchStage.role = query.role;
   if (query.status) matchStage.status = query.status;
+  if (query.trainingTeam) matchStage.trainingTeam = query.trainingTeam;
   if (query.username) matchStage.username = query.username;
   if (query.studentId) matchStage.studentId = query.studentId;
 
@@ -199,7 +201,22 @@ export const updateUser = async (id: string, updateData: Partial<IUser>) => {
   if (updateData.password) {
     updateData.password = await hashPassword(updateData.password);
   }
-  return await User.findByIdAndUpdate(id, updateData, { new: true }).select('-password');
+  return await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).select('-password');
+};
+
+export const batchUpdateTrainingTeam = async (userIds: string[], trainingTeam: string) => {
+  return await User.updateMany(
+    { _id: { $in: userIds }, role: { $ne: 'Teacher' } },
+    { $set: { trainingTeam } },
+    { runValidators: true }
+  );
+};
+
+export const findActiveUsersForExport = async () => {
+  return await User.find({ status: 'Active', role: { $ne: 'Teacher' } })
+    .select('-password -__v')
+    .sort({ trainingTeam: 1, grade: 1, studentId: 1 })
+    .lean();
 };
 
 export const deleteUser = async (studentId: string) => {

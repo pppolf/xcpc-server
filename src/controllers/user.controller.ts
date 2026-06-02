@@ -90,6 +90,71 @@ export const updateUser = async (req: Request, res: Response) => {
   }
 };
 
+// 批量调整集训队分队
+export const batchUpdateTrainingTeam = async (req: Request, res: Response) => {
+  try {
+    const { userIds, trainingTeam } = req.body;
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return fail(res, '请选择要调整的队员');
+    }
+
+    if (!['First', 'Second'].includes(trainingTeam)) {
+      return fail(res, '队伍参数不合法');
+    }
+
+    const result = await userService.batchUpdateTrainingTeam(userIds, trainingTeam);
+    success(res, { modifiedCount: result.modifiedCount }, '批量调整队伍成功');
+  } catch (error: any) {
+    fail(res, error.message || '批量调整队伍失败', 500, 500);
+  }
+};
+
+// 导出现役队员数据
+export const getActiveUsersForExport = async (_req: Request, res: Response) => {
+  try {
+    const users = await userService.findActiveUsersForExport();
+
+    const rows = users.map((user: any) => ({
+      username: user.username || '',
+      realName: user.realName || '',
+      gender: user.gender || '',
+      college: user.college || '',
+      professional: user.professional || '',
+      grade: user.grade || '',
+      studentId: String(user.studentId || ''),
+      phone: user.phone || '',
+      idCard: user.idCard || '',
+      email: user.email || '',
+      tsize: user.tsize || '',
+      role: user.role || 'Member',
+      status: user.status || 'Active',
+      trainingTeam: user.trainingTeam || 'Second',
+      problemNumber: user.problemNumber || 0,
+      ojInfo: {
+        cf: user.ojInfo?.cf || '',
+        at: user.ojInfo?.at || '',
+        nc: user.ojInfo?.nc || '',
+        lg: user.ojInfo?.lg || '',
+        cwnuoj: user.ojInfo?.cwnuoj || '',
+        vjudge: user.ojInfo?.vjudge || '',
+      },
+      ojStats: {
+        codeforces: user.ojStats?.codeforces || 0,
+        atcoder: user.ojStats?.atcoder || 0,
+        nowcoder: user.ojStats?.nowcoder || 0,
+        luogu: user.ojStats?.luogu || 0,
+        cwnuoj: user.ojStats?.cwnuoj || 0,
+        lastUpdate: user.ojStats?.lastUpdate || null,
+      },
+    }));
+
+    success(res, rows, '获取现役队员导出数据成功');
+  } catch (error: any) {
+    fail(res, error.message || '获取现役队员导出数据失败', 500, 500);
+  }
+};
+
 // 删除
 export const deleteUser = async (req: Request, res: Response) => {
   try {

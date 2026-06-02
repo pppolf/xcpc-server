@@ -1,5 +1,6 @@
 import axios from 'axios';
 import User from '../models/user.model';
+import { getTrainingTargetCount } from './training-target';
 
 // 模拟请求 Vjudge 数据的函数
 // 注意：Vjudge 可能有反爬虫，生产环境可能需要代理或 Cookie
@@ -96,14 +97,18 @@ export const parseAndSyncRank = async (trainingDoc: any) => {
       // 保持默认 0
     }
 
+    const targetCount = getTrainingTargetCount(trainingDoc, user);
+
     return {
       userId: user._id,
       realName: user.realName,
+      trainingTeam: user.trainingTeam,
+      targetCount,
       vjudgeHandle: user.ojInfo.vjudge, // 显示原始 handle
       solved: solved,
       penalty: penalty,
       isAK: solved >= trainingDoc.problemCount,
-      isPassed: solved >= trainingDoc.targetCount,
+      isPassed: solved >= targetCount,
       problemStatus: problemStatus
     };
   });

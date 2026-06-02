@@ -17,6 +17,12 @@ router.post('/', authMiddleware, roleMiddleware(['Teacher', 'Captain','Vice-Capt
 // POST /users/batch - 批量导入
 router.post('/batch', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.batchImportUsers);
 
+// PUT /users/batch/team - 批量调整集训队分队
+router.put('/batch/team', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.batchUpdateTrainingTeam);
+
+// GET /users/export/active - 获取现役队员导出数据
+router.get('/export/active', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.getActiveUsersForExport);
+
 // PUT /users/:id - 更新用户
 router.put('/:id', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.updateUser);
 

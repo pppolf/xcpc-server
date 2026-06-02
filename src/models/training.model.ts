@@ -1,45 +1,53 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITraining extends Document {
   title: string;
-  type: 'TRAINING' | 'ASSESSMENT'; // 训练 | 考核
-  platform: 'VJUDGE' | 'LOCAL';
-  vjudgeContestId?: string; // Vjudge 比赛 ID
-  problemCount: number; // 题目数量
-  targetCount: number;  // 目标过题数
+  type: 'TRAINING' | 'ASSESSMENT';
+  platform: 'VJUDGE' | 'NOWCODER' | 'LOCAL';
+  vjudgeContestId?: string;
+  nowcoderContestId?: string;
+  problemCount: number;
+  targetCount: number;
+  targetCountFirst?: number;
+  targetCountSecond?: number;
   startTime: Date;
-  duration: number; // 秒
-  ranklist: any[]; // 存储榜单快照
+  duration: number;
+  ranklist: any[];
 }
 
-const TrainingSchema = new mongoose.Schema({
-  title: { type: String, required: true }, // 训练标题
-  type: { type: String, enum: ['TRAINING', 'ASSESSMENT'], default: 'TRAINING' }, // 训练赛 vs 考核赛
-  
-  // 平台来源
-  platform: { type: String, enum: ['VJUDGE', 'LOCAL', 'OTHER'], default: 'VJUDGE' },
-  vjudgeContestId: { type: String }, // 如果是 Vjudge，存比赛ID (如 769279)
-  
-  // 目标设定
-  problemCount: { type: Number, required: true }, // 总题数 X
-  targetCount: { type: Number, required: true },  // 达标题数 Y
-  
-  // 时间控制 (用于进度条)
-  startTime: { type: Date, required: true },
-  duration: { type: Number, required: true }, // 单位：秒 (Vjudge API 返回的是秒) (length)
-  
-  // 成绩快照 (核心)
-  ranklist: [{
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // 关联本地用户
-    vjudgeHandle: String, // 冗余存一下，方便核对
-    realName: String,     // 冗余存一下，减少联查
-    solved: { type: Number, default: 0 }, // 过题数
-    penalty: { type: Number, default: 0 }, // 罚时（秒）
-    isAK: { type: Boolean, default: false }, // 是否全部完成
-    isPassed: { type: Boolean, default: false }, // 是否达标
-    // 题目详情: index -> { accepted: boolean, time: number }
-    problemStatus: { type: Schema.Types.Mixed, default: {} }  
-  }]
-}, { timestamps: true });
+const TrainingSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    type: { type: String, enum: ['TRAINING', 'ASSESSMENT'], default: 'TRAINING' },
+
+    platform: { type: String, enum: ['VJUDGE', 'NOWCODER', 'LOCAL', 'OTHER'], default: 'VJUDGE' },
+    vjudgeContestId: { type: String },
+    nowcoderContestId: { type: String },
+
+    problemCount: { type: Number, required: true },
+    targetCount: { type: Number, required: true },
+    targetCountFirst: { type: Number },
+    targetCountSecond: { type: Number },
+
+    startTime: { type: Date, required: true },
+    duration: { type: Number, required: true },
+
+    ranklist: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        vjudgeHandle: String,
+        realName: String,
+        trainingTeam: String,
+        targetCount: { type: Number, default: 0 },
+        solved: { type: Number, default: 0 },
+        penalty: { type: Number, default: 0 },
+        isAK: { type: Boolean, default: false },
+        isPassed: { type: Boolean, default: false },
+        problemStatus: { type: Schema.Types.Mixed, default: {} },
+      },
+    ],
+  },
+  { timestamps: true },
+);
 
 export default mongoose.model<ITraining>('Training', TrainingSchema);

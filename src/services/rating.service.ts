@@ -354,7 +354,7 @@ export const getMonthSnapshot = async (year: number, month: number) => {
   // 2. 关联查询 User 表，把 userId 变成具体的 { realName, studentId ... }
   .populate({
     path: 'userId',
-    select: 'realName studentId college role', // 只取需要的字段
+    select: 'realName studentId college role trainingTeam', // 只取需要的字段
     // 3. 可选：过滤掉老师 (虽然快照表理论上不存老师，但加一层保险)
     match: { role: { $ne: 'Teacher' } }
   })
@@ -389,6 +389,7 @@ export const archiveAndResetSeason = async (oldSeason: string, newSeason: string
             finalRating: user.rating,
             contestScore: user.ratingInfo?.contest || 0,
             practiceScore: user.ratingInfo?.problem || 0,
+            trainingTeam: user.trainingTeam || 'Second',
             rank: rank
           }
         },
