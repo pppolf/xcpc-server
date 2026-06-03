@@ -4,7 +4,14 @@ import { getTrainingTargetCount } from './training-target';
 
 const NOWCODER_TEAM_ID = process.env.NOWCODER_TEAM_ID || '726142122';
 
-type ProblemStatusMap = Record<string, { accepted: boolean; time: number }>;
+type ProblemStatus = {
+  accepted: boolean;
+  time: number;
+  score?: number;
+  fullScore?: number;
+};
+
+type ProblemStatusMap = Record<string, ProblemStatus>;
 
 const toNumber = (value: any, fallback = 0) => {
   const num = Number(value);
@@ -195,6 +202,10 @@ const getProblemTime = (problem: any) => {
   );
 };
 
+const getProblemScore = (problem: any) => {
+  return Math.max(toNumber(problem?.score), toNumber(problem?.postContestScore));
+};
+
 const getProblemKey = (problem: any, fallbackKey: any) => {
   return (
     problem?.index ??
@@ -222,30 +233,39 @@ const labelToZeroBasedIndex = (label: string) => {
   return result - 1;
 };
 
+const setProblemStatus = (
+  statusMap: ProblemStatusMap,
+  key: any,
+  status: ProblemStatus,
+  fallbackIndex?: number,
+) => {
+  if (key !== undefined && key !== null && key !== '') {
+    const rawKey = String(key);
+    statusMap[rawKey] = status;
+
+    const numericKey = Number(rawKey);
+    if (Number.isInteger(numericKey) && numericKey > 0) {
+      statusMap[String(numericKey - 1)] = status;
+    }
+
+    const labelIndex = labelToZeroBasedIndex(rawKey);
+    if (labelIndex !== undefined) {
+      statusMap[String(labelIndex)] = status;
+    }
+  }
+
+  if (fallbackIndex !== undefined) {
+    statusMap[String(fallbackIndex)] = status;
+  }
+};
+
 const setAcceptedProblem = (
   statusMap: ProblemStatusMap,
   key: any,
   time: number,
   fallbackIndex?: number,
 ) => {
-  if (key !== undefined && key !== null && key !== '') {
-    const rawKey = String(key);
-    statusMap[rawKey] = { accepted: true, time };
-
-    const numericKey = Number(rawKey);
-    if (Number.isInteger(numericKey) && numericKey > 0) {
-      statusMap[String(numericKey - 1)] = { accepted: true, time };
-    }
-
-    const labelIndex = labelToZeroBasedIndex(rawKey);
-    if (labelIndex !== undefined) {
-      statusMap[String(labelIndex)] = { accepted: true, time };
-    }
-  }
-
-  if (fallbackIndex !== undefined) {
-    statusMap[String(fallbackIndex)] = { accepted: true, time };
-  }
+  setProblemStatus(statusMap, key, { accepted: true, time }, fallbackIndex);
 };
 
 const getProblemDefinitions = (payload: any): any[] => {
@@ -286,12 +306,26 @@ const parseScoreListStatus = (row: any, definitions: any[]) => {
 
   row.scoreList.forEach((problem: any, index: number) => {
     const fullScore = getProblemFullScore(problem, definitions, index);
-    if (nearlyEqual(problem?.score, fullScore)) {
-      setAcceptedProblem(statusMap, getProblemKey(problem, index), getProblemTime(problem), index);
-    }
+    const score = getProblemScore(problem);
+    const accepted = nearlyEqual(score, fullScore);
+    setProblemStatus(
+      statusMap,
+      getProblemKey(problem, index),
+      {
+        accepted,
+        time: getProblemTime(problem),
+        score,
+        fullScore: toNumber(fullScore),
+      },
+      index,
+    );
   });
 
   return statusMap;
+};
+
+const getSolvedFromProblemStatus = (problemStatus: ProblemStatusMap) => {
+  return new Set(Object.values(problemStatus).filter((status) => status?.accepted)).size;
 };
 
 const parseProblemStatus = (row: any, definitions: any[]) => {
@@ -373,10 +407,11 @@ export const parseAndSyncNowCoderRank = async (trainingDoc: any) => {
   rows.forEach((row) => {
     const uid = normalizeKey(getUid(row));
     if (!uid) return;
+    const problemStatus = parseProblemStatus(row, problemDefinitions);
     statsMap.set(uid, {
-      solved: getSolved(row),
+      solved: getSolvedFromProblemStatus(problemStatus) || getSolved(row),
       penalty: getPenalty(row),
-      problemStatus: parseProblemStatus(row, problemDefinitions),
+      problemStatus,
     });
   });
 
