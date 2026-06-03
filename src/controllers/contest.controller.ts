@@ -41,7 +41,8 @@ export const addContestRecord = async (req: Request, res: Response) => {
       awardLevel: awardLevel || null,
       rank: rank || 0,
       totalParticipants: totalParticipants || 0,
-      rawScore
+      rawScore,
+      ...ratingService.getContestArchiveFields(season),
     });
 
     // C. [关键步骤] 触发该用户的总分重算
@@ -178,7 +179,8 @@ export const importContestRankings = async (req: Request, res: Response) => {
           rank: currentRank,
           totalParticipants,
           rawScore,
-          contestDate: new Date()
+          contestDate: new Date(),
+          ...ratingService.getContestArchiveFields(season),
         });
 
         userIdsToUpdate.add(targetUser._id.toString());

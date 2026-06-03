@@ -12,6 +12,7 @@ router.post('/season', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vi
 
 // 管理员用 - 强制结算
 router.post('/forceSettle', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), configController.forceSettle)
+router.post('/recalculateRatings', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), configController.recalculateRatings)
 
 // 设置 AtCoder Cookie
 router.post('/atcoder_cookie', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), configController.setAtCoderCookie);

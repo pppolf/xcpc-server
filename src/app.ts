@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db';
 import { initGlobalConfig } from './services/config.service';
+import { ensureContestRecordArchiveFields } from './services/rating.service';
 import { initScheduledJobs } from './jobs/schedule';
 
 import userRoutes from './routes/user.routes';
@@ -62,6 +63,7 @@ connectDB().then(async () => {
     
     // 🟢 第一步：必须先加载配置！
     await initGlobalConfig();
+    await ensureContestRecordArchiveFields();
 
     // 🟢 第二步：启动定时任务
     initScheduledJobs();

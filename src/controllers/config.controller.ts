@@ -31,6 +31,7 @@ export const setSeason = async (req: Request, res: Response) => {
 
     // 传入 newSeason
     await archiveAndResetSeason(oldSeason, newSeason);
+    await ratingService.markContestRecordsArchivedBySeason(oldSeason);
 
     // 更新全局配置
     await updateCurrentSeason(newSeason);
@@ -91,5 +92,14 @@ export const forceSettle = async (req: Request, res: Response) => {
     success(res, { count }, '强制结算成功');
   } catch (error: any) {
     fail(res, error.message);
+  }
+};
+
+export const recalculateRatings = async (_req: Request, res: Response) => {
+  try {
+    const count = await ratingService.recalculateAllUserRatings();
+    success(res, { count }, 'Rating 重算成功');
+  } catch (error: any) {
+    fail(res, error.message || 'Rating 重算失败', 500);
   }
 };

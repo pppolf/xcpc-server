@@ -121,6 +121,7 @@ export const handleTicket = async (req: Request, res: Response) => {
         rank: ticket.rank || 0,
         totalParticipants: ticket.totalParticipants || 0,
         rawScore: rawScore,
+        ...ratingService.getContestArchiveFields(ticket.season),
         contestDate: ticket.createdAt // 使用工单提交时间作为比赛录入时间
       });
 

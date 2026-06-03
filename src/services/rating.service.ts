@@ -186,7 +186,10 @@ export const calculateRawScore = (
 export const calculateContestRating = async (userId: string) => {
   const { CONTEST } = RATING_CONFIG;
 
-  const allRecords = await ContestRecord.find({ userId });
+  const allRecords = await ContestRecord.find({
+    userId,
+    isArchived: { $ne: true },
+  });
   const validScores: number[] = [];
 
   for (const record of allRecords) {
@@ -338,6 +341,54 @@ export const updateUserTotalRating = async (userId: string) => {
   });
 
   return finalRating;
+};
+
+export const recalculateAllUserRatings = async () => {
+  await ensureContestRecordArchiveFields();
+
+  const users = await User.find({ role: { $ne: 'Teacher' } }).select('_id');
+  let count = 0;
+
+  for (const user of users) {
+    await updateUserTotalRating(user._id.toString());
+    count++;
+  }
+
+  return count;
+};
+
+export const ensureContestRecordArchiveFields = async () => {
+  const result = await ContestRecord.updateMany(
+    { isArchived: { $exists: false } },
+    {
+      $set: {
+        isArchived: false,
+      },
+    },
+  );
+
+  return result.modifiedCount || 0;
+};
+
+export const markContestRecordsArchivedBySeason = async (season: string) => {
+  const result = await ContestRecord.updateMany(
+    { season, isArchived: { $ne: true } },
+    {
+      $set: {
+        isArchived: true,
+        archivedAt: new Date(),
+        archivedSeason: season,
+      },
+    },
+  );
+
+  return result.modifiedCount || 0;
+};
+
+export const getContestArchiveFields = (_season: string) => {
+  return {
+    isArchived: false,
+  };
 };
 
 /**
