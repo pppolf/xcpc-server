@@ -3,7 +3,16 @@ import GlobalSetting from '../models/global-setting.model';
 
 // --- 内存缓存 ---
 // 默认值，防止数据库没初始化时报错
-let CACHED_SEASON = '2025-2026'; 
+const getDefaultSeason = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const startYear = month >= 9 ? year : year - 1;
+
+  return `${startYear}-${startYear + 1}`;
+};
+
+let CACHED_SEASON = process.env.DEFAULT_SEASON || getDefaultSeason();
 
 // 1. 初始化配置 (在 app.ts 启动时调用)
 export const initGlobalConfig = async () => {
