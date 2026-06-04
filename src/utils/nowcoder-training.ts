@@ -244,7 +244,12 @@ const setProblemStatus = (
     statusMap[rawKey] = status;
 
     const numericKey = Number(rawKey);
-    if (Number.isInteger(numericKey) && numericKey > 0) {
+    if (
+      Number.isInteger(numericKey) &&
+      numericKey > 0 &&
+      fallbackIndex !== undefined &&
+      numericKey === fallbackIndex + 1
+    ) {
       statusMap[String(numericKey - 1)] = status;
     }
 
