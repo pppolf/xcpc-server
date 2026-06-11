@@ -1,8 +1,8 @@
-import axios from 'axios';
-import User from '../models/user.model';
-import { getTrainingTargetCount } from './training-target';
+import axios from "axios";
+import User from "../models/user.model";
+import { getTrainingTargetCount } from "./training-target";
 
-const NOWCODER_TEAM_ID = process.env.NOWCODER_TEAM_ID || '726142122';
+const NOWCODER_TEAM_ID = process.env.NOWCODER_TEAM_ID || "726142122";
 
 type ProblemStatus = {
   accepted: boolean;
@@ -18,12 +18,19 @@ const toNumber = (value: any, fallback = 0) => {
   return Number.isFinite(num) ? num : fallback;
 };
 
-const normalizeKey = (value: any) => String(value ?? '').trim().toLowerCase();
+const normalizeKey = (value: any) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase();
 
 const nearlyEqual = (a: any, b: any) => {
   const left = Number(a);
   const right = Number(b);
-  return Number.isFinite(left) && Number.isFinite(right) && Math.abs(left - right) < 1e-6;
+  return (
+    Number.isFinite(left) &&
+    Number.isFinite(right) &&
+    Math.abs(left - right) < 1e-6
+  );
 };
 
 const normalizeNowCoderTime = (value: any) => {
@@ -32,17 +39,18 @@ const normalizeNowCoderTime = (value: any) => {
 };
 
 export const fetchNowCoderRank = async (contestId: string) => {
-  const url = 'https://ac.nowcoder.com/acm-heavy/acm/contest/real-time-rank-data';
+  const url =
+    "https://ac.nowcoder.com/acm-heavy/acm/contest/real-time-rank-data";
   const res = await axios.get(url, {
     params: {
-      token: '',
+      token: "",
       id: contestId,
       teamId: NOWCODER_TEAM_ID,
       limit: 0,
     },
     headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
       Referer: `https://ac.nowcoder.com/acm/contest/${contestId}`,
     },
     timeout: 30000,
@@ -53,7 +61,7 @@ export const fetchNowCoderRank = async (contestId: string) => {
 const getByPath = (obj: any, path: string[]) => {
   let current = obj;
   for (const key of path) {
-    if (!current || typeof current !== 'object') return undefined;
+    if (!current || typeof current !== "object") return undefined;
     current = current[key];
   }
   return current;
@@ -73,20 +81,23 @@ const getUid = (row: any) => {
 
 const findRankRows = (payload: any): any[] => {
   const directPaths = [
-    ['data', 'rankData'],
-    ['data', 'rankList'],
-    ['data', 'list'],
-    ['data', 'rows'],
-    ['data', 'data'],
-    ['rankData'],
-    ['rankList'],
-    ['list'],
-    ['rows'],
+    ["data", "rankData"],
+    ["data", "rankList"],
+    ["data", "list"],
+    ["data", "rows"],
+    ["data", "data"],
+    ["rankData"],
+    ["rankList"],
+    ["list"],
+    ["rows"],
   ];
 
   for (const path of directPaths) {
     const value = getByPath(payload, path);
-    if (Array.isArray(value) && value.some((item) => item && typeof item === 'object')) {
+    if (
+      Array.isArray(value) &&
+      value.some((item) => item && typeof item === "object")
+    ) {
       return value;
     }
   }
@@ -95,13 +106,15 @@ const findRankRows = (payload: any): any[] => {
   const visit = (value: any) => {
     if (!value) return;
     if (Array.isArray(value)) {
-      if (value.some((item) => item && typeof item === 'object' && getUid(item))) {
+      if (
+        value.some((item) => item && typeof item === "object" && getUid(item))
+      ) {
         candidates.push(value);
       }
       value.forEach(visit);
       return;
     }
-    if (typeof value === 'object') {
+    if (typeof value === "object") {
       Object.values(value).forEach(visit);
     }
   };
@@ -126,7 +139,11 @@ const getSolved = (row: any) => {
 
 const getPenalty = (row: any) => {
   return normalizeNowCoderTime(
-    row?.penalty ?? row?.penaltyTime ?? row?.totalPenalty ?? row?.time ?? row?.useTime,
+    row?.penalty ??
+      row?.penaltyTime ??
+      row?.totalPenalty ??
+      row?.time ??
+      row?.useTime,
   );
 };
 
@@ -156,12 +173,20 @@ const getProblemCollection = (row: any) => {
 };
 
 const isAcceptedProblem = (problem: any) => {
-  if (typeof problem === 'boolean') return problem;
-  if (typeof problem === 'number') return problem > 0;
-  if (typeof problem === 'string') {
-    return ['1', '2', 'ac', 'accepted', 'pass', 'passed', 'solved', 'yes', 'true'].includes(
-      problem.trim().toLowerCase(),
-    );
+  if (typeof problem === "boolean") return problem;
+  if (typeof problem === "number") return problem > 0;
+  if (typeof problem === "string") {
+    return [
+      "1",
+      "2",
+      "ac",
+      "accepted",
+      "pass",
+      "passed",
+      "solved",
+      "yes",
+      "true",
+    ].includes(problem.trim().toLowerCase());
   }
 
   const status =
@@ -171,7 +196,9 @@ const isAcceptedProblem = (problem: any) => {
     problem?.accepted ??
     problem?.state ??
     problem?.resultType;
-  const normalized = String(status ?? '').trim().toLowerCase();
+  const normalized = String(status ?? "")
+    .trim()
+    .toLowerCase();
 
   return (
     problem?.accepted === true ||
@@ -183,12 +210,22 @@ const isAcceptedProblem = (problem: any) => {
     problem?.success === true ||
     status === 1 ||
     status === 2 ||
-    ['1', '2', 'ac', 'accepted', 'pass', 'passed', 'solved', 'yes', 'true'].includes(normalized)
+    [
+      "1",
+      "2",
+      "ac",
+      "accepted",
+      "pass",
+      "passed",
+      "solved",
+      "yes",
+      "true",
+    ].includes(normalized)
   );
 };
 
 const getProblemTime = (problem: any) => {
-  if (typeof problem === 'number') return problem;
+  if (typeof problem === "number") return problem;
   return normalizeNowCoderTime(
     problem?.time ??
       problem?.acceptedTime ??
@@ -203,7 +240,10 @@ const getProblemTime = (problem: any) => {
 };
 
 const getProblemScore = (problem: any) => {
-  return Math.max(toNumber(problem?.score), toNumber(problem?.postContestScore));
+  return Math.max(
+    toNumber(problem?.score),
+    toNumber(problem?.postContestScore),
+  );
 };
 
 const getProblemKey = (problem: any, fallbackKey: any) => {
@@ -239,7 +279,7 @@ const setProblemStatus = (
   status: ProblemStatus,
   fallbackIndex?: number,
 ) => {
-  if (key !== undefined && key !== null && key !== '') {
+  if (key !== undefined && key !== null && key !== "") {
     const rawKey = String(key);
     statusMap[rawKey] = status;
 
@@ -275,12 +315,12 @@ const setAcceptedProblem = (
 
 const getProblemDefinitions = (payload: any): any[] => {
   const directPaths = [
-    ['data', 'problemData'],
-    ['problemData'],
-    ['data', 'problems'],
-    ['problems'],
-    ['data', 'problemList'],
-    ['problemList'],
+    ["data", "problemData"],
+    ["problemData"],
+    ["data", "problems"],
+    ["problems"],
+    ["data", "problemList"],
+    ["problemList"],
   ];
 
   for (const path of directPaths) {
@@ -291,9 +331,15 @@ const getProblemDefinitions = (payload: any): any[] => {
   return [];
 };
 
-const getProblemFullScore = (problem: any, definitions: any[], index: number) => {
+const getProblemFullScore = (
+  problem: any,
+  definitions: any[],
+  index: number,
+) => {
   const byIndex = definitions[index];
-  const byProblemId = definitions.find((item) => item?.problemId === problem?.problemId);
+  const byProblemId = definitions.find(
+    (item) => item?.problemId === problem?.problemId,
+  );
   return (
     byProblemId?.score ??
     byProblemId?.sorce ??
@@ -330,7 +376,9 @@ const parseScoreListStatus = (row: any, definitions: any[]) => {
 };
 
 const getSolvedFromProblemStatus = (problemStatus: ProblemStatusMap) => {
-  return new Set(Object.values(problemStatus).filter((status) => status?.accepted)).size;
+  return new Set(
+    Object.values(problemStatus).filter((status) => status?.accepted),
+  ).size;
 };
 
 const parseProblemStatus = (row: any, definitions: any[]) => {
@@ -341,17 +389,27 @@ const parseProblemStatus = (row: any, definitions: any[]) => {
 
   const statusMap: ProblemStatusMap = {};
 
-  const parseSource = (value: any, acceptedOnly = false, depth = 0, sourceKey = '') => {
+  const parseSource = (
+    value: any,
+    acceptedOnly = false,
+    depth = 0,
+    sourceKey = "",
+  ) => {
     if (!value || depth > 5) return;
 
     if (Array.isArray(value)) {
       value.forEach((problem, index) => {
         if (acceptedOnly || isAcceptedProblem(problem)) {
-          setAcceptedProblem(statusMap, getProblemKey(problem, index), getProblemTime(problem), index);
+          setAcceptedProblem(
+            statusMap,
+            getProblemKey(problem, index),
+            getProblemTime(problem),
+            index,
+          );
           return;
         }
 
-        if (problem && typeof problem === 'object') {
+        if (problem && typeof problem === "object") {
           Object.entries(problem).forEach(([key, child]) => {
             if (isProblemCollectionKey(key)) {
               parseSource(child, isAcceptedOnlyKey(key), depth + 1, key);
@@ -362,17 +420,30 @@ const parseProblemStatus = (row: any, definitions: any[]) => {
       return;
     }
 
-    if (typeof value === 'object') {
+    if (typeof value === "object") {
       Object.entries(value).forEach(([key, problem]) => {
-        if (acceptedOnly || isAcceptedOnlyKey(sourceKey) || isAcceptedProblem(problem)) {
-          setAcceptedProblem(statusMap, getProblemKey(problem, key), getProblemTime(problem));
+        if (
+          acceptedOnly ||
+          isAcceptedOnlyKey(sourceKey) ||
+          isAcceptedProblem(problem)
+        ) {
+          setAcceptedProblem(
+            statusMap,
+            getProblemKey(problem, key),
+            getProblemTime(problem),
+          );
           return;
         }
 
-        if (problem && typeof problem === 'object') {
+        if (problem && typeof problem === "object") {
           Object.entries(problem).forEach(([childKey, child]) => {
             if (isProblemCollectionKey(childKey)) {
-              parseSource(child, isAcceptedOnlyKey(childKey), depth + 1, childKey);
+              parseSource(
+                child,
+                isAcceptedOnlyKey(childKey),
+                depth + 1,
+                childKey,
+              );
             }
           });
         }
@@ -395,13 +466,14 @@ const parseProblemStatus = (row: any, definitions: any[]) => {
 
 export const parseAndSyncNowCoderRank = async (trainingDoc: any) => {
   const activeUsers = await User.find({
-    status: 'Active',
-    role: { $ne: 'Teacher' },
+    status: "Active",
+    role: { $ne: "Teacher" },
   });
 
-  const contestId = trainingDoc.nowcoderContestId || trainingDoc.vjudgeContestId;
+  const contestId =
+    trainingDoc.nowcoderContestId || trainingDoc.vjudgeContestId;
   if (!contestId) {
-    throw new Error('缺少牛客比赛 ID');
+    throw new Error("缺少牛客比赛 ID");
   }
 
   const rawData = await fetchNowCoderRank(contestId);
@@ -433,7 +505,7 @@ export const parseAndSyncNowCoderRank = async (trainingDoc: any) => {
       realName: user.realName,
       trainingTeam: user.trainingTeam,
       targetCount,
-      vjudgeHandle: user.ojInfo?.nc || '',
+      vjudgeHandle: user.ojInfo?.nc || "",
       solved,
       penalty,
       isAK: solved >= trainingDoc.problemCount,
@@ -443,7 +515,7 @@ export const parseAndSyncNowCoderRank = async (trainingDoc: any) => {
   });
 
   trainingDoc.ranklist = newRanklist;
-  trainingDoc.markModified('ranklist');
+  trainingDoc.markModified("ranklist");
   await trainingDoc.save();
   return trainingDoc;
 };

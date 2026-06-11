@@ -21,7 +21,7 @@ const fetchCodeforces = async (): Promise<RawContestData[]> => {
       .map((c: any) => ({
         name: c.name,
         platform: 'CodeForces',
-        link: `https://codeforces.com/contest/${c.id}`,
+        link: `https://codeforces.com/contests/${c.id}`,
         startTime: new Date(c.startTimeSeconds * 1000),
         uniqueId: `CF_${c.id}`
       }));
@@ -73,7 +73,7 @@ const fetchNowCoder = async (): Promise<RawContestData[]> => {
     });
     const { data } = await axios.get('https://ac.nowcoder.com/acm/contest/vip-index', {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36',
         'Referer': 'https://ac.nowcoder.com/',
         'Host': 'ac.nowcoder.com', 
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
