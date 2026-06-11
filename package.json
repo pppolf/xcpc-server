@@ -8,6 +8,7 @@
     "build": "tsc",
     "patch:archive-contests-before-2026-06-01": "ts-node src/scripts/archive-contest-records-before-2026-06-01.ts",
     "patch:archive-contests-before-2026-06-01:dry-run": "ts-node src/scripts/archive-contest-records-before-2026-06-01.ts --dry-run",
+    "repair:misassigned-submissions": "ts-node src/scripts/repair-misassigned-submissions.ts",
     "rating:contest": "ts-node src/scripts/recalculate-contest-rating.ts",
     "rating:contest:dry-run": "ts-node src/scripts/recalculate-contest-rating.ts --dry-run"
   },
