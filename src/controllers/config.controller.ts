@@ -6,6 +6,29 @@ import User from '../models/user.model';
 import * as ratingService from '../services/rating.service';
 import { archiveAndResetSeason } from '../services/rating.service';
 import GlobalSetting from '../models/global-setting.model';
+import { getIntegrationKey } from '../services/integration-keys.service';
+
+export const getIntegrationKeys = async (_req: Request, res: Response) => {
+  try {
+    const [association, vp] = await Promise.all([getIntegrationKey('CWNUPAA_APP_KEY'), getIntegrationKey('VP_HISTORY_API_KEY')]);
+    success(res, { associationConfigured: Boolean(association), vpHistoryConfigured: Boolean(vp) });
+  } catch { fail(res, '数据接入配置暂时无法读取', 500, 500); }
+};
+export const setIntegrationKey = async (req: Request, res: Response) => {
+  const keyName = req.body?.service === 'association' ? 'CWNUPAA_APP_KEY'
+    : req.body?.service === 'vp-history' ? 'VP_HISTORY_API_KEY' : '';
+  if (!keyName) return fail(res, '请选择有效的数据接入服务', 400, 400);
+  const key = req.body?.apiKey;
+  if (typeof key !== 'string' || key.trim().length < 20 || key.length > 512 || /\s/.test(key.trim())) {
+    return fail(res, '请输入有效的服务密钥', 400, 400);
+  }
+  try {
+    await GlobalSetting.findOneAndUpdate({ key: keyName }, { $set: {
+      value: key.trim(), description: '系统管理保存的服务密钥，仅供后端调用',
+    } }, { upsert: true });
+    success(res, { configured: true }, '服务密钥已保存');
+  } catch { fail(res, '数据接入配置保存失败', 500, 500); }
+};
 
 // 获取当前赛季
 export const getSeason = (req: Request, res: Response) => {
@@ -64,7 +87,7 @@ export const setAtCoderCookie = async (req: Request, res: Response) => {
 
 export const getAtCoderCookie = async (req: Request, res: Response) => {
   const config = await GlobalSetting.findOne({ key: 'atcoder_cookie' });
-  return success(res, config?.value || '');
+  return success(res, { configured: Boolean(config?.value) });
 }
 
 export const initSnapshots = async (req: Request, res: Response) => {

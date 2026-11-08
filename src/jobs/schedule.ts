@@ -2,13 +2,20 @@
 import cron from "node-cron";
 import { refreshAllMembers } from "../services/crawler.service";
 import { batchSettleLastMonth } from "../services/rating.service";
-import { fetchAllUpcoming } from "../utils/crawlers/upcoming";
-import Upcoming from "../models/upcoming.model";
 import { refreshNowCoderDifficultyCache } from "../utils/crawlers/nowcoder";
+import { syncAllSchoolOjTrackers } from '../services/school-oj-tracker.service';
 
 // 初始化定时任务
 export const initScheduledJobs = () => {
   console.log("[Job] 定时任务系统已启动...");
+  cron.schedule('0 0 * * *', () => {
+    void syncAllSchoolOjTrackers().catch(error => console.error('[CWNUOJ Tracker] 自动同步任务失败', error));
+  }, { timezone: 'Asia/Shanghai', noOverlap: true });
+  // Populate school-OJ detail records after deployment; fresh users are skipped.
+  const initialSchoolSync = setTimeout(() => {
+    void syncAllSchoolOjTrackers(true).catch(error => console.error('[CWNUOJ Tracker] 首次同步任务失败', error));
+  }, 15000);
+  initialSchoolSync.unref();
 
   // 任务 1: 每日凌晨 03:00 自动爬取全队刷题数
   // 目的：更新 User.problemNumber 和 PracticeMonthStats.problemCount
@@ -33,26 +40,6 @@ export const initScheduledJobs = () => {
       console.log(`[Job] 月度结算完成，共处理 ${count} 人`);
     } catch (e) {
       console.error("[Job] 月度结算异常:", e);
-    }
-  });
-
-  // 任务 3: 每 2 小时抓取一次 近期比赛
-  cron.schedule("0 */2 * * *", async () => {
-    console.log("[Crawler] 开始抓取近期赛事...");
-    try {
-      const contests = await fetchAllUpcoming();
-      if (contests.length > 0) {
-        // 1. 删除所有旧的爬虫数据 (保留 Manual 数据!)
-        await Upcoming.deleteMany({ type: "Crawled" });
-
-        // 2. 插入新数据
-        const docs = contests.map((c) => ({ ...c, type: "Crawled" }));
-        await Upcoming.insertMany(docs);
-
-        console.log(`[Crawler] 赛事更新完成: 抓取到 ${docs.length} 场`);
-      }
-    } catch (e) {
-      console.error("[Crawler] 任务失败:", e);
     }
   });
 

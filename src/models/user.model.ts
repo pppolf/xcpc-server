@@ -18,6 +18,12 @@ export interface IUser extends Document {
   role: string;
   status: string;
   trainingTeam: string;
+  associationIdentity?: {
+    userId: string;
+    account: string;
+    studentId: string;
+    verifiedAt: Date;
+  };
   ojInfo: {
     cf: string;
     at: string;
@@ -27,6 +33,7 @@ export interface IUser extends Document {
     vjudge: string;
   };
   problemNumber: number;
+  schoolOjTracker?: { accountId: string; lastSyncedAt: Date; solvedCount: number };
   rating: number;
   ratingInfo: {
     contest: number;          // 比赛分 (R_contest)
@@ -63,6 +70,17 @@ const UserSchema: Schema = new Schema(
     role: { type: String, default: 'Member' },
     status: { type: String, default: 'Active' },
     trainingTeam: { type: String, enum: ['First', 'Second'], default: 'Second' },
+    // Association website identity is supplied only by a verified website login.
+    // It is unrelated to ojInfo.cwnuoj (the school's Hydro OJ numeric UID).
+    associationIdentity: {
+      type: new Schema({
+        userId: { type: String, required: true },
+        account: { type: String, required: true },
+        studentId: { type: String, required: true },
+        verifiedAt: { type: Date, required: true },
+      }, { _id: false }),
+      default: undefined,
+    },
     ojInfo: {
       cf: { type: String, default: '' },
       at: { type: String, default: '' },
@@ -72,6 +90,9 @@ const UserSchema: Schema = new Schema(
       vjudge: { type: String, default: '' },
     },
     problemNumber: { type: Number, default: 0 },
+    schoolOjTracker: { type: new Schema({
+      accountId: String, lastSyncedAt: Date, solvedCount: Number,
+    }, { _id: false }), default: undefined },
     rating: { type: Number, default: 0, index: -1 },
     ratingInfo: {
       contest: { type: Number, default: 0 },

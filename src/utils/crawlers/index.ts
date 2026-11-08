@@ -26,6 +26,8 @@ export const normalizeDifficulty = (platform: string, raw: string | number): num
       // 如果传入的是数字，直接映射；如果是字符串(防止意外)，尝试转数字
       return luoguMap[val] || 0;
     case 'CWNUOJ':
+      return ({ 0: 0, 1: 300, 2: 400, 3: 500, 4: 700, 5: 800, 6: 1000,
+        7: 1200, 8: 1400, 9: 1600, 10: 1800 } as Record<number, number>)[val] ?? 0;
     default:
       // 其他平台难度统一为 0 (前端渲染时判断为 0 则显示 N/A)
       return 0;

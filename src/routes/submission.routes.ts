@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { roleMiddleware, authMiddleware } from '../middlewares/auth.middleware'; // 假设有鉴权中间件
-import { syncAtCoder, syncCodeForces, syncData, syncLuogu, syncNowCoder } from '../controllers/submission.controller';
+import { syncAtCoder, syncCodeForces, syncData, syncLuogu, syncNowCoder, syncCWNUOJ } from '../controllers/submission.controller';
 
 const router = Router();
+router.post('/cwnuoj', authMiddleware, syncCWNUOJ);
 
 
 // 获取 AtCoder 提交

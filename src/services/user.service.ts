@@ -1,6 +1,7 @@
 import User, { IUser } from '../models/user.model';
 import bcrypt from 'bcryptjs';
 import MonthlySnapshot from '../models/monthly-snapshot.model';
+import { isSystemAccount } from './auth.service';
 
 // 查询参数接口
 interface UserQuery {
@@ -11,6 +12,7 @@ interface UserQuery {
   role?: string;
   status?: string;
   trainingTeam?: string;
+  account?: string;
   username?: string; // 登录查找用
   studentId?: string; // 登录查找用
   page?: string;
@@ -23,12 +25,22 @@ const hashPassword = async (password: string) => {
   return await bcrypt.hash(password, salt);
 };
 
+// Member forms and imports cannot forge a verified association website binding.
+const memberFields = (input: Partial<IUser>): Partial<IUser> => {
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (key !== 'associationIdentity' && !key.startsWith('$') && !key.includes('.')) clean[key] = value;
+  }
+  return clean;
+};
+
 export const createUser = async (userData: IUser) => {
+  const fields = memberFields(userData);
   // 1. 设置默认密码并加密
-  const plainPassword = userData.password || '123456';
-  userData.password = await hashPassword(plainPassword);
+  const plainPassword = fields.password || '123456';
+  fields.password = await hashPassword(plainPassword);
   
-  return await User.create(userData);
+  return await User.create(fields);
 };
 
 export const batchCreateUsers = async (users: IUser[]) => {
@@ -40,7 +52,7 @@ export const batchCreateUsers = async (users: IUser[]) => {
       filter: { studentId: user.studentId },
       update: {
         $set: {
-          ...user,
+          ...memberFields(user),
           password: user.password ? bcrypt.hashSync(user.password, 10) : defaultHashedPassword,
         },
       },
@@ -56,14 +68,19 @@ export const findAllUsers = async (query: UserQuery) => {
 
   // 1. 构建筛选条件 ($match)
   // 默认隐藏管理员
-  if (!query.role && !query.username && !query.studentId) {
+  if (!query.role && !query.account && !query.username && !query.studentId) {
     matchStage.role = { $ne: 'Teacher' }; 
   }
 
-  // 模糊查询 (注意: Aggregation 中使用 regex 需谨慎，但在小数据量下没问题)
-  if (query.realName) matchStage.realName = { $regex: query.realName, $options: 'i' };
-  if (query.college) matchStage.college = { $regex: query.college, $options: 'i' };
-  if (query.grade) matchStage.grade = { $regex: query.grade, $options: 'i' };
+  // Treat search input as literal text, including punctuation typed in real time.
+  const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (query.realName) matchStage.realName = { $regex: escapeRegex(query.realName), $options: 'i' };
+  if (query.college) matchStage.college = { $regex: escapeRegex(query.college), $options: 'i' };
+  if (query.grade) matchStage.grade = { $regex: escapeRegex(query.grade), $options: 'i' };
+  if (query.account) {
+    const pattern = { $regex: escapeRegex(query.account), $options: 'i' };
+    matchStage.$or = [{ username: pattern }, { studentId: pattern }];
+  }
 
   // 精确查询
   if (query.gender) matchStage.gender = query.gender;
@@ -169,34 +186,12 @@ export const findAllUsers = async (query: UserQuery) => {
   };
 };
 
-// 新增：登录验证逻辑
-export const login = async (username: string, plainTextPassword: string) => {
-  // 1. 查找用户 (显式 select +password，因为 Schema 默认不查)
-  const user = await User.findOne({ 
-    $or: [{ username }, { studentId: username }] 
-  }).select('+password');
-
-  if (!user) {
-    throw new Error('用户不存在');
-  }
-
-  // 2. 比对加密密码
-  const isMatch = await bcrypt.compare(plainTextPassword, user.password!);
-  if (!isMatch) {
-    throw new Error('密码错误');
-  }
-
-  // 3. 验证通过，返回用户信息 (去掉密码)
-  const userObj = user.toObject();
-  delete userObj.password;
-  return userObj;
-};
-
 export const findUserById = async (id: string) => {
   return await User.findById(id).select('-password');
 };
 
 export const updateUser = async (id: string, updateData: Partial<IUser>) => {
+  updateData = memberFields(updateData);
   // 如果更新包含密码，需要重新加密
   if (updateData.password) {
     updateData.password = await hashPassword(updateData.password);
@@ -210,6 +205,41 @@ export const batchUpdateTrainingTeam = async (userIds: string[], trainingTeam: s
     { $set: { trainingTeam } },
     { runValidators: true }
   );
+};
+
+export const batchUpdateMembers = async (
+  identifiers: { userIds?: string[]; studentIds?: string[] },
+  changes: { status?: 'Active' | 'Retired'; trainingTeam?: 'First' | 'Second' },
+) => {
+  const byStudentId = Boolean(identifiers.studentIds);
+  const requested = [...new Set(identifiers.studentIds || identifiers.userIds || [])];
+  const query = byStudentId ? { studentId: { $in: requested } } : { _id: { $in: requested } };
+  const users = await User.find(query).select('_id studentId username role status trainingTeam');
+  const keyFor = (user: any) => byStudentId ? user.studentId : String(user._id);
+  const found = new Set(users.map(keyFor));
+  const protectedUsers = users.filter(user => user.role === 'Teacher' || isSystemAccount(user.username));
+  const eligible = users.filter(user => user.role !== 'Teacher' && !isSystemAccount(user.username));
+  const fields = Object.entries(changes);
+  const alreadySet = eligible.filter(user => fields.every(([key, value]) => user.get(key) === value));
+  const needsUpdate = eligible.filter(user => fields.some(([key, value]) => user.get(key) !== value));
+  // Exclude unchanged members so timestamps do not turn a repeated submission
+  // into a false positive in MongoDB's modifiedCount.
+  const result = needsUpdate.length ? await User.updateMany(
+    { _id: { $in: needsUpdate.map(user => user._id) }, role: { $ne: 'Teacher' },
+      $or: fields.map(([key, value]) => ({ [key]: { $ne: value } })) },
+    { $set: changes },
+    { runValidators: true },
+  ) : { matchedCount: 0, modifiedCount: 0 };
+  return {
+    identifierType: byStudentId ? 'studentId' : 'userId',
+    requestedCount: requested.length,
+    matchedCount: alreadySet.length + result.matchedCount,
+    modifiedCount: result.modifiedCount,
+    unchangedCount: alreadySet.length + result.matchedCount - result.modifiedCount,
+    notFound: requested.filter(id => !found.has(id)),
+    protected: protectedUsers.map(keyFor),
+    changedDuringUpdateCount: needsUpdate.length - result.matchedCount,
+  };
 };
 
 export const findActiveUsersForExport = async () => {

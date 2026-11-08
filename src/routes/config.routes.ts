@@ -1,8 +1,16 @@
 import { Router } from 'express';
 import * as configController from '../controllers/config.controller';
 import { authMiddleware, roleMiddleware } from '../middlewares/auth.middleware';
+import * as termController from '../controllers/term.controller';
 
 const router = Router();
+const termManagers = roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']);
+router.get('/terms', authMiddleware, termController.getTerms);
+router.get('/integration-keys', authMiddleware, termManagers, configController.getIntegrationKeys);
+router.post('/integration-keys', authMiddleware, termManagers, configController.setIntegrationKey);
+router.post('/terms/sync', authMiddleware, termManagers, termController.syncTerms);
+router.post('/terms', authMiddleware, termManagers, termController.createTerm);
+router.put('/terms/:id', authMiddleware, termManagers, termController.updateTerm);
 
 // 获取赛季 (所有人可看)
 router.get('/season', configController.getSeason);

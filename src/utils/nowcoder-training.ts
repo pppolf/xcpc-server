@@ -375,6 +375,22 @@ const parseScoreListStatus = (row: any, definitions: any[]) => {
   return statusMap;
 };
 
+// The display also shows post-contest credit. Semester scoring uses only the
+// original contest score, and leaves incomplete score lists for review.
+const getContestSolved = (row: any, definitions: any[], problemCount: number) => {
+  if (!Array.isArray(row?.scoreList) || !Number.isSafeInteger(problemCount) ||
+    problemCount < 1 || row.scoreList.length !== problemCount) return undefined;
+  let solved = 0;
+  for (const [index, problem] of row.scoreList.entries()) {
+    const score = problem?.score;
+    const maximum = problem && getProblemFullScore(problem, definitions, index);
+    if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 ||
+      typeof maximum !== 'number' || !Number.isFinite(maximum) || maximum <= 0) return undefined;
+    if (nearlyEqual(score, maximum)) solved++;
+  }
+  return solved;
+};
+
 const getSolvedFromProblemStatus = (problemStatus: ProblemStatusMap) => {
   return new Set(
     Object.values(problemStatus).filter((status) => status?.accepted),
@@ -487,6 +503,7 @@ export const parseAndSyncNowCoderRank = async (trainingDoc: any) => {
     const problemStatus = parseProblemStatus(row, problemDefinitions);
     statsMap.set(uid, {
       solved: getSolvedFromProblemStatus(problemStatus) || getSolved(row),
+      contestSolved: getContestSolved(row, problemDefinitions, trainingDoc.problemCount),
       penalty: getPenalty(row),
       problemStatus,
     });
@@ -507,6 +524,8 @@ export const parseAndSyncNowCoderRank = async (trainingDoc: any) => {
       targetCount,
       vjudgeHandle: user.ojInfo?.nc || "",
       solved,
+      ...(stats ? { syncStatus: "synced" } : {}),
+      nowcoderContestSolved: stats?.contestSolved,
       penalty,
       isAK: solved >= trainingDoc.problemCount,
       isPassed: solved >= targetCount,

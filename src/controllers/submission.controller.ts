@@ -3,6 +3,8 @@ import { getAtCoder, getCodeForces, getLuogu, getNowCoder, syncUserSubmissions }
 import { fail, success } from '../utils/response';
 import Notification from '../models/notification.model';
 import User from '../models/user.model';
+import { syncSchoolOjTracker } from '../services/school-oj-tracker.service';
+import { schoolOjUid } from '../utils/crawlers/cwnuoj';
 
 /**
  * 通用后台任务执行器
@@ -37,6 +39,19 @@ const runBackgroundTask = (userId: string, platform: string, taskFn: () => Promi
         isRead: false
       });
     });
+};
+
+export const syncCWNUOJ = async (req: Request, res: Response) => {
+  const userId = req.user!.userId;
+  try {
+    const user = await User.findById(userId).select('ojInfo.cwnuoj');
+    if (!user) return fail(res, '用户不存在', 404, 404);
+    schoolOjUid(user.ojInfo?.cwnuoj);
+  } catch (error) {
+    return fail(res, error instanceof Error ? error.message : '学校 OJ 账号读取失败', 400, 400);
+  }
+  success(res, { message: '学校 OJ 同步任务已启动，结果将通过消息通知您。' });
+  runBackgroundTask(userId, '学校 OJ', () => syncSchoolOjTracker(userId));
 };
 
 // 1. 获取AtCoder提交数据的同步接口

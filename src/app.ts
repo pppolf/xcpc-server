@@ -1,29 +1,26 @@
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config({ path: ['.env.local', '.env'] });
 
 import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db';
 import { initGlobalConfig } from './services/config.service';
+import { initIntegrationKeys } from './services/integration-keys.service';
 import { ensureContestRecordArchiveFields } from './services/rating.service';
 import { initScheduledJobs } from './jobs/schedule';
 
 import userRoutes from './routes/user.routes';
-import contestRoutes from './routes/contest.routes';
 import crawlerRoutes from './routes/crawler.routes';
 import configRoutes from './routes/config.routes';
 import ratingRoutes from './routes/rating.routes';
-import ticketRoutes from './routes/ticket.routes';
 import commonRoutes from './routes/common.routes';
 import notificationRoutes from './routes/notification.routes';
-import noticeRoutes from './routes/notice.routes';
-import honorRoutes from './routes/honor.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import trainingRoutes from './routes/training.routes';
 import submissionRoutes from './routes/submission.routes';
 import statsRoutes from './routes/stats.routes';
-import upcomingRoutes from './routes/upcoming.routes';
 import retirementRoutes from './routes/retirement.routes';
+import termScoreRoutes from './routes/term-score.routes';
 
 import User from './models/user.model';
 import bcrypt from 'bcryptjs';
@@ -38,23 +35,26 @@ const PORT = 3000;
 app.use(cors());
 app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
 app.use(express.json());
+// Re-read API data and authentication responses for each account/session.
+app.use((_req, res, next) => {
+  res.set('Cache-Control', 'no-store, private');
+  res.set('Pragma', 'no-cache');
+  res.vary('Authorization');
+  next();
+});
 
 app.use('/users', userRoutes);
-app.use('/contests', contestRoutes);
 app.use('/crawler', crawlerRoutes);
 app.use('/config', configRoutes);
 app.use('/rating', ratingRoutes);
-app.use('/tickets', ticketRoutes);
 app.use('/common', commonRoutes);
 app.use('/notifications', notificationRoutes);
-app.use('/notices', noticeRoutes);
-app.use('/honors', honorRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/training', trainingRoutes);
 app.use('/submissions', submissionRoutes);
 app.use('/stats', statsRoutes)
-app.use('/upcoming', upcomingRoutes);
 app.use('/retirements', retirementRoutes);
+app.use('/scores', termScoreRoutes);
 
 // ==========================================
 // 2. 连接数据库 -> 初始化配置 -> 启动服务 (Async 链式调用)
@@ -63,6 +63,7 @@ connectDB().then(async () => {
     
     // 🟢 第一步：必须先加载配置！
     await initGlobalConfig();
+    await initIntegrationKeys();
     await ensureContestRecordArchiveFields();
 
     // 🟢 第二步：启动定时任务

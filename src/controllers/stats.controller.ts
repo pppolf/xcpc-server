@@ -2,6 +2,14 @@ import { Request, Response } from 'express';
 import Submission from '../models/submission.model';
 import { success, fail } from '../utils/response';
 import dayjs from 'dayjs';
+import User from '../models/user.model';
+
+const visibleSubmissions = async (userId: any) => {
+  const user = await User.findById(userId).select('ojInfo.cwnuoj schoolOjTracker').lean();
+  const accountId = String(user?.ojInfo?.cwnuoj || '').trim();
+  return { user, query: { userId, $or: [{ platform: { $ne: 'CWNUOJ' } },
+    { platform: 'CWNUOJ', sourceAccount: accountId || '__unbound__' }] } };
+};
 
 // 1. 获取图表聚合数据 (Charts Overview)
 // 定义难度区间 Key
@@ -31,8 +39,9 @@ export const getChartData = async (req: Request, res: Response) => {
     const period = req.query.period as string;
     // 1. 查询该用户所有 AC 记录，只取需要的字段以减少流量
     // sort({ solveTime: 1 }) 是为了后续生成热力图和趋势图方便
-    const submissions = await Submission.find({ userId })
-      .select('solveTime difficulty rawDifficulty problemId title')
+    const { query, user } = await visibleSubmissions(userId);
+    const submissions = await Submission.find(query)
+      .select('solveTime difficulty rawDifficulty problemId displayProblemId title')
       .sort({ solveTime: 1 })
       .lean();
 
@@ -54,6 +63,8 @@ export const getChartData = async (req: Request, res: Response) => {
       last7Days: 0,
       last30Days: 0,
       thisYear: 0,
+      schoolOjTracker: user?.schoolOjTracker?.accountId === String(user?.ojInfo?.cwnuoj || '').trim()
+        ? user?.schoolOjTracker : null,
 
       // Charts 数据 (难度分布)
       difficultyStats: DIFF_KEYS.reduce((acc, key) => ({ ...acc, [key]: 0 }), {} as Record<string, number>),
@@ -89,7 +100,7 @@ export const getChartData = async (req: Request, res: Response) => {
       }
       stats.calendarHeatmap[dateStr].count++;
       stats.calendarHeatmap[dateStr].problems.push({
-        id: sub.problemId || 'Unknown',
+        id: sub.displayProblemId || sub.problemId || 'Unknown',
         title: sub.title || '',
         diff: sub.difficulty || 'N/A',
         rating: diff
@@ -155,7 +166,8 @@ export const getTableData = async (req: Request, res: Response) => {
     // 🟢 接收截图中的所有筛选参数
     const { sources, problemId, title, minDiff, maxDiff, tags, startDate, endDate } = req.query;
 
-    const query: any = { userId };
+    const { query: visibleQuery } = await visibleSubmissions(userId);
+    const query: any = visibleQuery;
 
     // 1. 来源筛选 (多选) -> sources="CodeForces,AtCoder"
     if (sources) {
@@ -164,7 +176,10 @@ export const getTableData = async (req: Request, res: Response) => {
     }
 
     // 2. 独立搜索 (ID 和 标题)
-    if (problemId) query.problemId = { $regex: new RegExp(String(problemId), 'i') };
+    if (problemId) {
+      const pattern = { $regex: new RegExp(String(problemId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') };
+      query.$and = [{ $or: [{ problemId: pattern }, { displayProblemId: pattern }] }];
+    }
     if (title) query.title = { $regex: new RegExp(String(title), 'i') };
 
     // 3. 难度范围

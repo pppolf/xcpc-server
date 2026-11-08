@@ -2,11 +2,14 @@ import { Router } from 'express';
 import * as userController from '../controllers/user.controller';
 import { authMiddleware, roleMiddleware } from '../middlewares/auth.middleware';
 import { uploadAvatar } from '../middlewares/upload.middleware';
+import { getAssociationHonors } from '../controllers/association-honors.controller';
 
 const router = Router();
 
-// POST /users/login - 登录 (放在最前面，防止被 :id 拦截)
+// 普通用户只使用协会官网认证；本地密码仅对明确配置的系统账号开放。
 router.post('/login', userController.login);
+router.post('/send-code', userController.sendLoginCode);
+router.post('/system-login', userController.systemLogin);
 
 // GET /users - 获取列表(带筛选)
 router.get('/', authMiddleware, userController.getUsers);
@@ -19,6 +22,7 @@ router.post('/batch', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vic
 
 // PUT /users/batch/team - 批量调整集训队分队
 router.put('/batch/team', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.batchUpdateTrainingTeam);
+router.put('/batch/membership', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.batchUpdateMembers);
 
 // GET /users/export/active - 获取现役队员导出数据
 router.get('/export/active', authMiddleware, roleMiddleware(['Teacher', 'Captain', 'Vice-Captain', 'Student-Coach']), userController.getActiveUsersForExport);
@@ -31,6 +35,7 @@ router.delete('/:studentId', authMiddleware, roleMiddleware(['Teacher', 'Captain
 
 // 获取个人信息 (必须加 authMiddleware)
 router.get('/profile', authMiddleware, userController.getUserProfile);
+router.get('/:id/association-honors', authMiddleware, getAssociationHonors);
 
 // 根据id获取用户展示信息
 router.get('/:id', authMiddleware, userController.getUserById);

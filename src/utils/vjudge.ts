@@ -105,6 +105,7 @@ export const parseAndSyncRank = async (trainingDoc: any) => {
       trainingTeam: user.trainingTeam,
       targetCount,
       vjudgeHandle: user.ojInfo.vjudge, // 显示原始 handle
+      ...(stats ? { syncStatus: 'synced' } : {}),
       solved: solved,
       penalty: penalty,
       isAK: solved >= trainingDoc.problemCount,

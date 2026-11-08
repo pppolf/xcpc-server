@@ -4,6 +4,8 @@ export interface ISubmission extends Document {
   userId: mongoose.Types.ObjectId;
   platform: 'CodeForces' | 'AtCoder' | 'Luogu' | 'NowCoder' | 'CWNUOJ';
   remoteId: string; // 提交记录的ID (RunID)，用于跳转链接
+  sourceAccount?: string; // School OJ numeric UID, kept distinct from website identity.
+  displayProblemId?: string;
   problemId: string; // 题目ID (如 1800A)，用于去重
   title: string;
   link: string;
@@ -18,6 +20,8 @@ const SubmissionSchema = new Schema<ISubmission>({
   platform: { type: String, required: true },
   
   remoteId: { type: String, required: true }, 
+  sourceAccount: String,
+  displayProblemId: String,
   problemId: { type: String, required: true },
   
   title: { type: String },

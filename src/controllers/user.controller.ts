@@ -6,6 +6,7 @@ import User from '../models/user.model';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import fs from 'fs';
+import * as authService from '../services/auth.service';
 
 // 获取列表
 export const getUsers = async (req: Request, res: Response) => {
@@ -18,29 +19,36 @@ export const getUsers = async (req: Request, res: Response) => {
   }
 };
 
-// 登录接口
-export const login = async (req: Request, res: Response) => {
+const handleLogin = (source: 'association' | 'system') => async (req: Request, res: Response) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return fail(res, '账号密码不能为空');
-    }
-    
-    // 1. 验证账号密码
-    const user = await userService.login(username, password);
-    
-    // 2. 生成真实 JWT Token
-    // payload 放入我们后续可能需要的信息，比如 ID、角色
+    const user = source === 'association'
+      ? await authService.loginWithAssociation(req.body ?? {})
+      : await authService.loginWithSystemAccount(req.body ?? {});
     const token = generateToken({
-      userId: user._id.toString(), // 转成字符串
+      userId: user._id.toString(),
       username: user.username,
-      role: user.role
+      role: user.role,
+      authSource: source,
     });
-    
-    // 3. 返回
     success(res, { user, token }, '登录成功');
-  } catch (error: any) {
-    fail(res, error.message || '登录失败', 401);
+  } catch (error) {
+    const status = error instanceof authService.AuthenticationError ? error.status : 500;
+    const message = error instanceof authService.AuthenticationError ? error.message : '登录失败，请稍后重试';
+    fail(res, message, status, status);
+  }
+};
+
+export const login = handleLogin('association');
+export const systemLogin = handleLogin('system');
+
+export const sendLoginCode = async (req: Request, res: Response) => {
+  try {
+    await authService.sendAssociationCode(req.body?.email);
+    success(res, null, '验证码已发送');
+  } catch (error) {
+    const status = error instanceof authService.AuthenticationError ? error.status : 500;
+    const message = error instanceof authService.AuthenticationError ? error.message : '验证码发送失败，请稍后重试';
+    fail(res, message, status, status);
   }
 };
 
@@ -107,6 +115,36 @@ export const batchUpdateTrainingTeam = async (req: Request, res: Response) => {
     success(res, { modifiedCount: result.modifiedCount }, '批量调整队伍成功');
   } catch (error: any) {
     fail(res, error.message || '批量调整队伍失败', 500, 500);
+  }
+};
+
+// Only the explicitly supplied membership fields can be changed by a batch.
+export const batchUpdateMembers = async (req: Request, res: Response) => {
+  const body = req.body ?? {};
+  const byUserId = Array.isArray(body.userIds);
+  const byStudentId = Array.isArray(body.studentIds);
+  if (byUserId === byStudentId) return fail(res, '请选择队员或提供学号列表，两种方式只能选择一种', 400, 400);
+  const rawIds = byStudentId ? body.studentIds : body.userIds;
+  if (!rawIds.length || rawIds.length > 1000 || rawIds.some((id: unknown) => typeof id !== 'string'
+    || !id.trim() || id.length > 64 || (byStudentId ? /[\s,，;；]/.test(id.trim()) : !/^[a-f\d]{24}$/i.test(id)))) {
+    return fail(res, '请提供有效的队员列表；学号一行一个，每次最多 1000 个', 400, 400);
+  }
+  const changes: { status?: 'Active' | 'Retired'; trainingTeam?: 'First' | 'Second' } = {};
+  if (body.status !== undefined) {
+    if (!['Active', 'Retired'].includes(body.status)) return fail(res, '在役状态参数不合法', 400, 400);
+    changes.status = body.status;
+  }
+  if (body.trainingTeam !== undefined) {
+    if (!['First', 'Second'].includes(body.trainingTeam)) return fail(res, '队伍参数不合法', 400, 400);
+    changes.trainingTeam = body.trainingTeam;
+  }
+  if (!Object.keys(changes).length) return fail(res, '请至少选择在役状态或队伍中的一项', 400, 400);
+  try {
+    const ids = rawIds.map((id: string) => byStudentId ? id.trim() : id.trim().toLowerCase());
+    const result = await userService.batchUpdateMembers(byStudentId ? { studentIds: ids } : { userIds: ids }, changes);
+    return success(res, result, result.matchedCount ? '批量修改完成' : '没有找到可修改的队员');
+  } catch {
+    return fail(res, '批量修改失败，请稍后重试', 500, 500);
   }
 };
 
@@ -233,6 +271,10 @@ export const updatePassword = async (req: Request, res: Response) => {
     const user = await User.findById(userId).select('+password');
     if (!user) return fail(res, '用户不存在', 404);
 
+    if (!authService.isSystemAccount(user.username)) {
+      return fail(res, '请前往协会官网修改登录密码', 403, 403);
+    }
+
     // 1. 验证旧密码
     // 注意：如果是通过脚本批量导入的用户，可能没有加密，这里要做兼容处理
     // 但为了安全，通常假设数据库里存的都是 hash。
@@ -264,6 +306,10 @@ export const resetUserPassword = async (req: Request, res: Response) => {
 
     const user = await User.findById(userId);
     if (!user) return fail(res, '目标用户不存在', 404);
+
+    if (!authService.isSystemAccount(user.username)) {
+      return fail(res, '普通用户使用协会官网认证，请前往官网重置密码', 403, 403);
+    }
 
     // 直接覆盖密码，不需要验证旧密码
     const salt = await bcrypt.genSalt(10);
